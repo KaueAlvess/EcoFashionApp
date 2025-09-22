@@ -2,6 +2,7 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
 import { Button, StyleSheet, Text, View } from 'react-native';
+import TrevoTroca from '../../components/TrevoTroca';
 
 export default function PerfilScreen() {
   const [userImage, setUserImage] = useState<string | null>(null);
@@ -25,21 +26,25 @@ export default function PerfilScreen() {
     }
   };
 
+  const quantidadeTrevos = 5;
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Perfil do Usuário</Text>
-      <View style={styles.centerContainer}>
-        {userImage ? (
-          <Image
-            source={userImage}
-            style={styles.userImage}
-          />
-        ) : (
-          <View style={styles.placeholder}>
-            <Text style={styles.placeholderText}>Nenhuma foto selecionada</Text>
-          </View>
-        )}
-        <Button title="Selecionar Foto de Usuário" onPress={pickImage} />
+    <View style={{ flex: 1 }}>
+      <TrevoTroca quantidade={quantidadeTrevos} />
+      <View style={styles.container}>
+        <Text style={styles.title}>Perfil do Usuário</Text>
+        <View style={styles.centerContainer}>
+          {userImage ? (
+            <Image
+              source={userImage}
+              style={styles.userImage}
+            />
+          ) : (
+            <View style={styles.placeholder}>
+              <Text style={styles.placeholderText}>Nenhuma foto selecionada</Text>
+            </View>
+          )}
+          <Button title="Selecionar Foto de Usuário" onPress={pickImage} />
+        </View>
       </View>
     </View>
   );

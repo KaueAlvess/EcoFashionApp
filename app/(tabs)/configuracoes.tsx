@@ -1,36 +1,41 @@
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import TrevoTroca from '../../components/TrevoTroca';
 
 export default function ConfiguracoesScreen() {
   const router = useRouter();
 
+  const quantidadeTrevos = 5;
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Image
-          source={require('../../assets/images/logo.png')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-        <Text style={styles.title}>Configurações</Text>
-      </View>
+    <View style={{ flex: 1 }}>
+      <TrevoTroca quantidade={quantidadeTrevos} />
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Image
+            source={require('../../assets/images/logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <Text style={styles.title}>Configurações</Text>
+        </View>
 
-      <View style={styles.options}>
-        <TouchableOpacity
-          style={styles.optionButton}
-          onPress={() => router.push('/configuracoes/perfil')}
-        >
-          <Image source={require('../../assets/images/mobile.png')} style={styles.optionIcon} />
-          <Text style={styles.optionText}>Perfil</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.optionButton}
-          onPress={() => router.push('/configuracoes/sobrenos')}
-        >
-          <Image source={require('../../assets/images/bar.png')} style={styles.optionIcon} />
-          <Text style={styles.optionText}>Sobre Nós</Text>
-        </TouchableOpacity>
+        <View style={styles.options}>
+          <TouchableOpacity
+            style={styles.optionButton}
+            onPress={() => router.push('/configuracoes/perfil')}
+          >
+            <Image source={require('../../assets/images/mobile.png')} style={styles.optionIcon} />
+            <Text style={styles.optionText}>Perfil</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.optionButton}
+            onPress={() => router.push('/configuracoes/sobrenos')}
+          >
+            <Image source={require('../../assets/images/bar.png')} style={styles.optionIcon} />
+            <Text style={styles.optionText}>Sobre Nós</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );

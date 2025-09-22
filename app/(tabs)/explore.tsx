@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const produtos = [
   {
@@ -65,6 +65,23 @@ const produtos = [
 ];
 
 export default function ExploreScreen() {
+  const [modalVisible, setModalVisible] = React.useState(false);
+  const [produtoSelecionado, setProdutoSelecionado] = React.useState<{
+    nome: string;
+    descricao: string;
+    imagem: string;
+  } | null>(null);
+
+  const handleTroca = (produto: { nome: string; descricao: string; imagem: string }) => {
+    setProdutoSelecionado(produto);
+    setModalVisible(true);
+  };
+
+  const fecharModal = () => {
+    setModalVisible(false);
+    setProdutoSelecionado(null);
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.header}>Roupas</Text>
@@ -74,9 +91,35 @@ export default function ExploreScreen() {
             <Image source={{ uri: produto.imagem }} style={styles.imagem} />
             <Text style={styles.nome}>{produto.nome}</Text>
             <Text style={styles.descricao}>{produto.descricao}</Text>
+            <TouchableOpacity style={styles.trocaBtn} onPress={() => handleTroca(produto)}>
+              <Text style={styles.trocaBtnText}>Trocar</Text>
+            </TouchableOpacity>
           </View>
         ))}
       </View>
+
+      {/* Modal de confirmação de troca */}
+      <Modal visible={modalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <TouchableOpacity style={styles.closeModal} onPress={fecharModal}>
+              <Text style={{ fontSize: 24 }}>&times;</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Confirmar Troca</Text>
+            {produtoSelecionado && (
+              <>
+                <Image source={{ uri: produtoSelecionado.imagem }} style={styles.modalImg} />
+                <Text style={styles.nome}>{produtoSelecionado.nome}</Text>
+                <Text style={styles.descricao}>{produtoSelecionado.descricao}</Text>
+              </>
+            )}
+            <Text style={{ marginVertical: 12 }}>Deseja confirmar a troca deste produto?</Text>
+            <TouchableOpacity style={styles.confirmBtn} onPress={fecharModal}>
+              <Text style={styles.confirmBtnText}>Confirmar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -132,5 +175,64 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#444',
     textAlign: 'center',
+  },
+  trocaBtn: {
+    backgroundColor: '#2E7D32',
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+    borderRadius: 20,
+    marginTop: 8,
+  },
+  trocaBtnText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    width: 320,
+    elevation: 4,
+    position: 'relative',
+  },
+  closeModal: {
+    position: 'absolute',
+    top: 8,
+    right: 12,
+    zIndex: 2,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2E7D32',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalImg: {
+    width: 120,
+    height: 120,
+    borderRadius: 10,
+    marginBottom: 8,
+    backgroundColor: '#eee',
+  },
+  confirmBtn: {
+    backgroundColor: '#388E3C',
+    paddingVertical: 10,
+    paddingHorizontal: 32,
+    borderRadius: 24,
+    marginTop: 12,
+  },
+  confirmBtnText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 });

@@ -1,71 +1,76 @@
 import React from 'react';
 import { Alert, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import TrevoTroca from '../../components/TrevoTroca';
 
 export default function SobreNosScreen() {
   const handleDownloadApp = () => {
     Alert.alert('Essa função ainda está em desenvolvimento.', 'Em breve estará disponível!');
   };
 
+  const quantidadeTrevos = 5;
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Image
-        source={require('../../assets/images/logo.png')}
-        style={styles.logo}
-        resizeMode="contain"
-      />
-      <Text style={styles.title}>Sobre Nós</Text>
-      <Text style={styles.paragraph}>
-        Aqui você terá acesso à nossa história, ter um entendimento do nosso objetivo e conduta.
-      </Text>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>EcoFashion</Text>
+    <View style={{ flex: 1 }}>
+      <TrevoTroca quantidade={quantidadeTrevos} />
+      <ScrollView contentContainerStyle={styles.container}>
+        <Image
+          source={require('../../assets/images/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+        <Text style={styles.title}>Sobre Nós</Text>
         <Text style={styles.paragraph}>
-          Somos uma instituição de roupas, com um diferencial que é doar e recompensar os usuários.
+          Aqui você terá acesso à nossa história, ter um entendimento do nosso objetivo e conduta.
         </Text>
-      </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Como doar no nosso app?</Text>
-        <Text style={styles.paragraph}>
-          Para doar você precisa ir na área de "Doar" e seguir as instruções contidas na página. É preciso preencher as partes de requisitos de doações para prosseguir.
-        </Text>
-      </View>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>EcoFashion</Text>
+          <Text style={styles.paragraph}>
+            Somos uma instituição de roupas, com um diferencial que é doar e recompensar os usuários.
+          </Text>
+        </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Como adquirir nossos produtos?</Text>
-        <Text style={styles.paragraph}>
-          Para adquirir nossos produtos você precisa baixar nosso App.
-        </Text>
-      </View>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Como doar no nosso app?</Text>
+          <Text style={styles.paragraph}>
+            Para doar você precisa ir na área de "Doar" e seguir as instruções contidas na página. É preciso preencher as partes de requisitos de doações para prosseguir.
+          </Text>
+        </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Conheça Pesquisadores de Moda Sustentável</Text>
-        <View style={styles.cardContainer}>
-          <View style={styles.card}>
-            <Image
-              source={require('../../assets/images/Kate.jpg')}
-              style={styles.cardImage}
-            />
-            <Text style={styles.cardTitle}>Kate Fletcher</Text>
-            <Text style={styles.cardText}>
-              Especialista em moda pós-industrial e desenvolvimento local. Defende uma moda mais consciente e conectada ao meio ambiente.
-            </Text>
-          </View>
-          <View style={styles.card}>
-            <Image
-              source={{ uri: 'https://images.squarespace-cdn.com/content/v1/591218e0f7e0abcf6ce40add/1516477076045-5MHBVIDGLDIM4OKPOLTB/Professor+Hazel+Clark+-+new+blue+teal.jpg' }}
-              style={styles.cardImage}
-            />
-            <Text style={styles.cardTitle}>Hazel Clark</Text>
-            <Text style={styles.cardText}>
-              Trabalha com consumo duradouro e design responsável, explorando novos modelos de consumo na indústria da moda.
-            </Text>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Como adquirir nossos produtos?</Text>
+          <Text style={styles.paragraph}>
+            Para adquirir nossos produtos você precisa baixar nosso App.
+          </Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Conheça Pesquisadores de Moda Sustentável</Text>
+          <View style={styles.cardContainer}>
+            <View style={styles.card}>
+              <Image
+                source={require('../../assets/images/Kate.jpg')}
+                style={styles.cardImage}
+              />
+              <Text style={styles.cardTitle}>Kate Fletcher</Text>
+              <Text style={styles.cardText}>
+                Especialista em moda pós-industrial e desenvolvimento local. Defende uma moda mais consciente e conectada ao meio ambiente.
+              </Text>
+            </View>
+            <View style={styles.card}>
+              <Image
+                source={{ uri: 'https://images.squarespace-cdn.com/content/v1/591218e0f7e0abcf6ce40add/1516477076045-5MHBVIDGLDIM4OKPOLTB/Professor+Hazel+Clark+-+new+blue+teal.jpg' }}
+                style={styles.cardImage}
+              />
+              <Text style={styles.cardTitle}>Hazel Clark</Text>
+              <Text style={styles.cardText}>
+                Trabalha com consumo duradouro e design responsável, explorando novos modelos de consumo na indústria da moda.
+              </Text>
+            </View>
           </View>
         </View>
-      </View>
-      <Text style={styles.footer}>&copy; EcoFashion - Moda Sustentável</Text>
-    </ScrollView>
+        <Text style={styles.footer}>&copy; EcoFashion - Moda Sustentável</Text>
+      </ScrollView>
+    </View>
   );
 }
 

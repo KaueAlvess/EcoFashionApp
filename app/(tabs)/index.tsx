@@ -1,72 +1,77 @@
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import TrevoTroca from '../../components/TrevoTroca';
 
 export default function HomeScreen() {
   const router = useRouter();
 
+  const quantidadeTrevos = 5;
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.logoContainer}>
-        <Image
-          source={require('@/assets/images/logo.png')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-        <Text style={styles.logoTitle}>EcoFashion</Text>
-      </View>
-
-      <View style={styles.introSection}>
-        <Text style={styles.introTitle}>Bem-vindo à EcoFashion</Text>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Transforme seu estilo e ajude as pessoas que precisam</Text>
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => router.push('/explore')}
-        >
-          <Text style={styles.buttonText}>Nossos produtos</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Doe Roupas e Ganhe Benefícios! 🍀</Text>
-        <Text style={styles.sectionText}>
-          Transforme suas roupas usadas em descontos para compras em nossa loja. Contribua para um futuro mais verde e estiloso!
-        </Text>
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => router.push('/doacao')}
-        >
-          <Text style={styles.buttonText}>Faça sua doação</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>🤔 Perguntas recorrentes:</Text>
-        <View style={styles.faqItem}>
-          <Text style={styles.faqTitle}>O que eu ganho doando?</Text>
-          <Text style={styles.faqText}>
-            Ao optar por doar dentro da loja, você ganha promoções e benefícios, ajudamos a reduzir o impacto ambiental e o desperdício de recursos naturais.
-          </Text>
+    <View style={{ flex: 1 }}>
+      <TrevoTroca quantidade={quantidadeTrevos} />
+      <ScrollView contentContainerStyle={styles.container}>
+        <View style={styles.logoContainer}>
+          <Image
+            source={require('@/assets/images/logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <Text style={styles.logoTitle}>EcoFashion</Text>
         </View>
-        <View style={styles.faqItem}>
-          <Text style={styles.faqTitle}>Para onde vai suas doações?</Text>
-          <Text style={styles.faqText}>
-            Ao doar suas doações vão ser redirecionadas para uma das suas escolhas, sendo ela para a própria instituição ou para algum tipo de organização.
-          </Text>
-        </View>
-        <View style={styles.faqItem}>
-          <Text style={styles.faqTitle}>No que isso pode ajudar na sociedade?</Text>
-          <Text style={styles.faqText}>
-            Suas doações vão para pessoas que realmente precisam, e também ajudam projetos como: Campanha do casaco e outros.
-          </Text>
-        </View>
-      </View>
 
-      <Text style={styles.footer}>&copy; EcoFashion - Moda Sustentável</Text>
-    </ScrollView>
+        <View style={styles.introSection}>
+          <Text style={styles.introTitle}>Bem-vindo à EcoFashion</Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Transforme seu estilo e ajude as pessoas que precisam</Text>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => router.push('/explore')}
+          >
+            <Text style={styles.buttonText}>Nossos produtos</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Doe Roupas e Ganhe Benefícios! 🍀</Text>
+          <Text style={styles.sectionText}>
+            Transforme suas roupas usadas em descontos para compras em nossa loja. Contribua para um futuro mais verde e estiloso!
+          </Text>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => router.push('/doacao')}
+          >
+            <Text style={styles.buttonText}>Faça sua doação</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>🤔 Perguntas recorrentes:</Text>
+          <View style={styles.faqItem}>
+            <Text style={styles.faqTitle}>O que eu ganho doando?</Text>
+            <Text style={styles.faqText}>
+              Ao optar por doar dentro da loja, você ganha promoções e benefícios, ajudamos a reduzir o impacto ambiental e o desperdício de recursos naturais.
+            </Text>
+          </View>
+          <View style={styles.faqItem}>
+            <Text style={styles.faqTitle}>Para onde vai suas doações?</Text>
+            <Text style={styles.faqText}>
+              Ao doar suas doações vão ser redirecionadas para uma das suas escolhas, sendo ela para a própria instituição ou para algum tipo de organização.
+            </Text>
+          </View>
+          <View style={styles.faqItem}>
+            <Text style={styles.faqTitle}>No que isso pode ajudar na sociedade?</Text>
+            <Text style={styles.faqText}>
+              Suas doações vão para pessoas que realmente precisam, e também ajudam projetos como: Campanha do casaco e outros.
+            </Text>
+          </View>
+        </View>
+
+        <Text style={styles.footer}>&copy; EcoFashion - Moda Sustentável</Text>
+      </ScrollView>
+    </View>
   );
 }
 
