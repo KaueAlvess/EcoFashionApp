@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import TrevoTroca from '../../components/TrevoTroca';
 
 const styles = StyleSheet.create({
@@ -8,12 +8,60 @@ const styles = StyleSheet.create({
   section: { marginBottom: 18, width: '100%', alignItems: 'center' },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#388E3C', marginBottom: 8, textAlign: 'center' },
   optionsRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12 },
-  destinoOption: { alignItems: 'center', marginHorizontal: 8, padding: 8, borderRadius: 12, backgroundColor: '#fff', elevation: 2, borderWidth: 2, borderColor: 'transparent' },
-  selectedOption: { borderColor: '#2E7D32', backgroundColor: '#E8F8F8' },
-  destinoImg: { width: 48, height: 48, borderRadius: 24, marginBottom: 4 },
-  destinoText: { fontSize: 14, color: '#2E7D32', textAlign: 'center' },
-  optionBtn: { backgroundColor: '#fff', borderRadius: 12, padding: 8, margin: 4, elevation: 1, borderWidth: 2, borderColor: 'transparent' },
-  textArea: { backgroundColor: '#fff', borderRadius: 12, padding: 12, minHeight: 80, width: '100%', marginTop: 8, marginBottom: 8, textAlignVertical: 'top' },
+  destinoOption: {
+    alignItems: 'center',
+    marginHorizontal: 8,
+    padding: 12,
+    borderRadius: 16,
+    backgroundColor: '#e8f8e8',
+    elevation: 3,
+    borderWidth: 2,
+    borderColor: '#43ea7a',
+    shadowColor: '#2E7D32',
+    shadowOpacity: 0.10,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  selectedOption: {
+    borderColor: '#2E7D32',
+    backgroundColor: '#c6f7d0',
+    elevation: 5,
+    shadowOpacity: 0.18,
+  },
+  destinoImg: { width: 52, height: 52, borderRadius: 26, marginBottom: 6 },
+  destinoText: { fontSize: 16, color: '#145c2e', textAlign: 'center', fontWeight: 'bold' },
+  optionBtn: {
+    backgroundColor: '#e8f8e8',
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    margin: 6,
+    elevation: 2,
+    borderWidth: 2,
+    borderColor: '#43ea7a',
+    shadowColor: '#2E7D32',
+    shadowOpacity: 0.10,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  textArea: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    minHeight: 80,
+    width: '100%',
+    marginTop: 8,
+    marginBottom: 8,
+    textAlignVertical: 'top',
+    borderWidth: 2,
+    borderColor: '#43ea7a',
+    shadowColor: '#2E7D32',
+    shadowOpacity: 0.10,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    fontSize: 16,
+    color: '#145c2e',
+  },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
   modalContent: { backgroundColor: '#fff', borderRadius: 16, padding: 24, alignItems: 'center', width: 320, elevation: 4, position: 'relative' },
   confirmModalContent: { backgroundColor: '#fff', borderRadius: 16, padding: 24, alignItems: 'center', width: 320, elevation: 4, position: 'relative' },
@@ -60,7 +108,41 @@ export default function DoacaoTab() {
   const quantidadeTrevos = 5;
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: '#F5F5F5' }}>
+      {/* Header e botão de trevos personalizado */}
+      <View style={{ width: '100%', alignItems: 'center', marginTop: 32, marginBottom: 8 }}>
+        <TouchableOpacity
+          style={{
+            backgroundColor: 'linear-gradient(90deg, #43ea7a 0%, #2E7D32 100%)',
+            borderRadius: 28,
+            paddingVertical: 20,
+            paddingHorizontal: 38,
+            flexDirection: 'row',
+            alignItems: 'center',
+            elevation: 6,
+            shadowColor: '#2E7D32',
+            shadowOpacity: 0.18,
+            shadowRadius: 12,
+            shadowOffset: { width: 0, height: 4 },
+            borderWidth: 2,
+            borderColor: '#43ea7a',
+          }}
+          onPress={() => window.location.href = '/trevos'}
+        >
+          {/* Ícone de lista */}
+          <View style={{ marginRight: 18 }}>
+            <View style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}>
+              <View style={{ width: 32, height: 6, backgroundColor: '#145c2e', borderRadius: 3, marginBottom: 5 }} />
+              <View style={{ width: 24, height: 6, backgroundColor: '#145c2e', borderRadius: 3, marginBottom: 5 }} />
+              <View style={{ width: 16, height: 6, backgroundColor: '#145c2e', borderRadius: 3 }} />
+            </View>
+          </View>
+          {/* Número de trevos */}
+          <Text style={{ fontSize: 36, fontWeight: 'bold', color: '#fff', marginLeft: 6, textShadowColor: '#2E7D32', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 2 }}>{quantidadeTrevos}</Text>
+        </TouchableOpacity>
+      </View>
+      {/* Espaço entre botão e conteúdo */}
+      <View style={{ height: 18 }} />
       <TrevoTroca quantidade={quantidadeTrevos} />
       <ScrollView contentContainerStyle={styles.container}>
         {/* Modal Inicial */}
@@ -81,10 +163,11 @@ export default function DoacaoTab() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Selecione o destino da sua doação:</Text>
           <View style={styles.optionsRow}>
-            {destinos.map((d) => (
+            {destinos.map((d, idx) => (
               <TouchableOpacity
                 key={d.key}
                 style={[styles.destinoOption, destino === d.key && styles.selectedOption]}
+                activeOpacity={0.7}
                 onPress={() => setDestino(d.key)}
               >
                 <Image source={d.img} style={styles.destinoImg} />
@@ -102,9 +185,10 @@ export default function DoacaoTab() {
               <TouchableOpacity
                 key={opt.value}
                 style={[styles.optionBtn, tempoUso === opt.value && styles.selectedOption]}
+                activeOpacity={0.7}
                 onPress={() => setTempoUso(opt.value)}
               >
-                <Text>{opt.label}</Text>
+                <Text style={{ color: '#145c2e', fontWeight: tempoUso === opt.value ? 'bold' : 'normal' }}>{opt.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -118,9 +202,10 @@ export default function DoacaoTab() {
               <TouchableOpacity
                 key={opt.value}
                 style={[styles.optionBtn, estado === opt.value && styles.selectedOption]}
+                activeOpacity={0.7}
                 onPress={() => setEstado(opt.value)}
               >
-                <Text>{opt.label}</Text>
+                <Text style={{ color: '#145c2e', fontWeight: estado === opt.value ? 'bold' : 'normal' }}>{opt.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -134,9 +219,10 @@ export default function DoacaoTab() {
               <TouchableOpacity
                 key={opt}
                 style={[styles.optionBtn, tamanho === opt && styles.selectedOption]}
+                activeOpacity={0.7}
                 onPress={() => setTamanho(opt)}
               >
-                <Text>{opt}</Text>
+                <Text style={{ color: '#145c2e', fontWeight: tamanho === opt ? 'bold' : 'normal' }}>{opt}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -150,16 +236,45 @@ export default function DoacaoTab() {
             multiline
             numberOfLines={4}
             placeholder="Descrição do produto"
+            placeholderTextColor="#43ea7a"
             value={descricao}
             onChangeText={setDescricao}
           />
         </View>
 
-        <Button
-          title="Realizar Doação"
-          onPress={() => setConfirmModalVisible(true)}
+        <TouchableOpacity
+          style={{
+            backgroundColor: !destino || !tempoUso || !estado || !tamanho ? '#b7e7c3' : 'linear-gradient(90deg, #43ea7a 0%, #2E7D32 100%)',
+            borderRadius: 18,
+            paddingVertical: 16,
+            paddingHorizontal: 32,
+            alignItems: 'center',
+            marginTop: 12,
+            elevation: 3,
+            shadowColor: '#2E7D32',
+            shadowOpacity: 0.12,
+            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 2 },
+            opacity: !destino || !tempoUso || !estado || !tamanho ? 0.6 : 1,
+          }}
+          activeOpacity={0.7}
+          onPress={() => {
+            if (destino && tempoUso && estado && tamanho) setConfirmModalVisible(true);
+          }}
           disabled={!destino || !tempoUso || !estado || !tamanho}
-        />
+        >
+          <Text style={{
+            color: !destino || !tempoUso || !estado || !tamanho ? '#145c2e' : '#fff',
+            fontWeight: 'bold',
+            fontSize: 18,
+            letterSpacing: 1,
+            textShadowColor: '#2E7D32',
+            textShadowOffset: {width: 1, height: 1},
+            textShadowRadius: 2,
+          }}>
+            REALIZAR DOAÇÃO
+          </Text>
+        </TouchableOpacity>
 
         {/* Modal de Confirmação */}
         <Modal visible={confirmModalVisible} transparent animationType="fade">

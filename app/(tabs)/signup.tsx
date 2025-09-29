@@ -1,24 +1,25 @@
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useState } from 'react';
 import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-export default function LoginScreen() { // Renomeado para LoginScreen
+export default function SignupScreen() {
   const router = useRouter();
-  const [email, setEmail] = React.useState("");
-  const [senha, setSenha] = React.useState("");
+  const [nome, setNome] = useState("");
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+  const [confirmarSenha, setConfirmarSenha] = useState("");
 
-  // Função para lidar com o login (apenas exemplo)
-  const handleLogin = () => {
-  // Aqui você pode implementar a lógica de autenticação
-  // Redireciona para a área principal do app após login
-  router.push('/explore');
-  // Anotação: Após login, usuário é redirecionado para área de home
-  };
-
-  // Função para o botão 'Criar uma conta'
+  // Função para lidar com o cadastro
   const handleSignup = () => {
-    // Redireciona para a página de cadastro
-    router.push('/signup');
+    // Aqui você pode implementar a lógica de cadastro
+    if (senha !== confirmarSenha) {
+      alert("As senhas não coincidem!");
+      return;
+    }
+    alert("Cadastro realizado com sucesso!");
+    // Redireciona para a tela de login após cadastro
+    router.push('/');
+    // Anotação: Após cadastro, usuário é redirecionado para tela de login
   };
 
   return (
@@ -27,15 +28,25 @@ export default function LoginScreen() { // Renomeado para LoginScreen
       <View style={styles.logoContainer}>
         <Image
           source={require('@/assets/images/logo.png')}
-          style={styles.logoLogin}
+          style={styles.logoSignup}
           resizeMode="contain"
         />
-        <Text style={styles.logoTitleLogin}>Ecofashion</Text>
-        <Text style={styles.slogan}>MODA SUSTENTÁVEL</Text>
+        <Text style={styles.logoTitleSignup}>Ecofashion</Text>
+        <Text style={styles.slogan}>CADASTRO</Text>
       </View>
 
-      {/* Card de login */}
-      <View style={styles.loginCard}>
+      {/* Card de cadastro */}
+      <View style={styles.signupCard}>
+        {/* Campo de nome */}
+        <View style={styles.inputContainer}>
+          <Text style={styles.inputIcon}>👤</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Nome"
+            value={nome}
+            onChangeText={setNome}
+          />
+        </View>
         {/* Campo de email */}
         <View style={styles.inputContainer}>
           <Text style={styles.inputIcon}>📧</Text>
@@ -59,39 +70,41 @@ export default function LoginScreen() { // Renomeado para LoginScreen
             secureTextEntry
           />
         </View>
-        {/* Botão de login */}
-        <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-          <Text style={styles.loginButtonText}>Login</Text>
-        </TouchableOpacity>
-        {/* Links de cadastro */}
-        <View style={styles.signupLinks}>
-          <Text style={styles.signupText}>Não tem uma conta?</Text>
-          <TouchableOpacity onPress={handleSignup}>
-            <Text style={styles.signupLink}>Criar uma conta</Text>
-          </TouchableOpacity>
-          {/* Anotação: Função handleSignup adicionada para o botão de cadastro */}
+        {/* Campo de confirmação de senha */}
+        <View style={styles.inputContainer}>
+          <Text style={styles.inputIcon}>🔒</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Confirmar Senha"
+            value={confirmarSenha}
+            onChangeText={setConfirmarSenha}
+            secureTextEntry
+          />
         </View>
+        {/* Botão de cadastro */}
+        <TouchableOpacity style={styles.signupButton} onPress={handleSignup}>
+          <Text style={styles.signupButtonText}>Cadastrar</Text>
+        </TouchableOpacity>
       </View>
-      {/* Anotação: Layout modificado para tela de login conforme print enviado */}
+      {/* Anotação: Página de cadastro criada conforme solicitado */}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  // Estilos para tela de login
   logoContainer: {
     alignItems: 'center',
     marginBottom: 24,
     marginTop: 32,
   },
-  logoLogin: {
+  logoSignup: {
     width: 120,
     height: 120,
     marginBottom: 8,
     borderRadius: 16,
-    backgroundColor: '#EDE7D4', // fundo bege para destacar a logo
+    backgroundColor: '#EDE7D4',
   },
-  logoTitleLogin: {
+  logoTitleSignup: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#2E7D32',
@@ -104,7 +117,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     letterSpacing: 1,
   },
-  loginCard: {
+  signupCard: {
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: 24,
@@ -136,16 +149,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#444',
   },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginBottom: 10,
-  },
-  forgotPasswordText: {
-    color: '#2E7D32',
-    fontSize: 14,
-    textDecorationLine: 'underline',
-  },
-  loginButton: {
+  signupButton: {
     backgroundColor: '#00C853',
     borderRadius: 24,
     paddingVertical: 12,
@@ -153,26 +157,10 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 8,
   },
-  loginButtonText: {
+  signupButtonText: {
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 18,
   },
-  signupLinks: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  signupText: {
-    fontSize: 14,
-    color: '#888',
-    marginRight: 4,
-  },
-  signupLink: {
-    fontSize: 14,
-    color: '#2E7D32',
-    fontWeight: 'bold',
-    textDecorationLine: 'underline',
-  },
-  // Anotação: Estilos criados para tela de login conforme print
+  // Anotação: Estilos criados para tela de cadastro
 });
