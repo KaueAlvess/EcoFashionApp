@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import Toast from '../../components/Toast';
 
 export default function SignupScreen() {
   const router = useRouter();
@@ -8,22 +9,43 @@ export default function SignupScreen() {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [confirmarSenha, setConfirmarSenha] = useState("");
+  const [toast, setToast] = useState<{ message: string; type?: 'success' | 'error' } | null>(null);
 
   // Função para lidar com o cadastro
-  const handleSignup = () => {
-    // Aqui você pode implementar a lógica de cadastro
+  const handleSignup = async () => {
     if (senha !== confirmarSenha) {
-      alert("As senhas não coincidem!");
+      setToast({ message: 'As senhas não coincidem!', type: 'error' });
+      setTimeout(() => setToast(null), 2000);
       return;
     }
-    alert("Cadastro realizado com sucesso!");
-    // Redireciona para a tela de login após cadastro
-    router.push('/');
-    // Anotação: Após cadastro, usuário é redirecionado para tela de login
+    try {
+      const response = await fetch('http://localhost:3001/api/cadastro', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ nome, email, senha }),
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setToast({ message: 'Cadastro realizado com sucesso!', type: 'success' });
+        setTimeout(() => {
+          setToast(null);
+          router.push('/');
+        }, 1200);
+      } else {
+        setToast({ message: data.error || 'Erro ao cadastrar.', type: 'error' });
+        setTimeout(() => setToast(null), 2000);
+      }
+    } catch (error) {
+  setToast({ message: 'Erro de conexão com o servidor.', type: 'error' });
+  setTimeout(() => setToast(null), 2000);
+    }
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F5F5F5', justifyContent: 'center' }}>
+      {toast ? <Toast message={toast.message} type={toast.type} /> : null}
       {/* Logo e título */}
       <View style={styles.logoContainer}>
         <Image

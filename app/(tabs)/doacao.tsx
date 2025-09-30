@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import Toast from '../../components/Toast';
 import TrevoTroca from '../../components/TrevoTroca';
 
 const styles = StyleSheet.create({
@@ -103,12 +104,95 @@ export default function DoacaoTab() {
   const [estado, setEstado] = useState('');
   const [tamanho, setTamanho] = useState('');
   const [descricao, setDescricao] = useState('');
+  const [fotoRoupa, setFotoRoupa] = useState<File | null>(null);
+  const [toast, setToast] = useState<{ message: string; type?: 'success' | 'error' } | null>(null);
+  const router = require('expo-router').useRouter();
 
   const selectedDestino = destinos.find(d => d.key === destino);
-  const quantidadeTrevos = 5;
+  const [quantidadeTrevos, setQuantidadeTrevos] = React.useState(0);
+
+  React.useEffect(() => {
+    const email = localStorage.getItem('email'); // Ajuste para mobile se necessário
+    if (email) {
+      fetch(`http://localhost:3001/api/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, senha: '' }) // senha vazia só para buscar, ajuste conforme sua lógica
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.usuario) {
+            setQuantidadeTrevos(data.usuario.trevos || 0);
+          }
+        });
+    }
+  }, []);
+
+  // Função para selecionar foto
+  const selecionarFoto = async () => {
+    const { launchImageLibraryAsync, requestMediaLibraryPermissionsAsync, MediaTypeOptions } = require('expo-image-picker');
+    const permissionResult = await requestMediaLibraryPermissionsAsync();
+    if (!permissionResult.granted) {
+      alert('Permissão para acessar a galeria é necessária!');
+      return;
+    }
+    const result = await launchImageLibraryAsync({
+      mediaTypes: MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
+    });
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      setFotoRoupa(result.assets[0].uri);
+    }
+  };
+
+  // Função para realizar doação
+  const realizarDoacao = async () => {
+    try {
+      const idUsuario = localStorage.getItem('idUsuario');
+      if (!idUsuario) {
+        setToast({ message: 'Usuário não identificado. Faça login novamente.', type: 'error' });
+        setTimeout(() => setToast(null), 2000);
+        return;
+      }
+      const formData = new FormData();
+      formData.append('usuario_id', idUsuario);
+      formData.append('descricao', descricao);
+      formData.append('destino', destino);
+      formData.append('tempo_uso', tempoUso);
+      formData.append('estado', estado);
+      formData.append('tamanho', tamanho);
+      if (fotoRoupa) {
+        formData.append('foto', fotoRoupa);
+      }
+      const response = await fetch('http://localhost:3001/api/doacao', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+      const data = await response.json();
+      if (data.success) {
+        setToast({ message: 'Doação enviada para análise!', type: 'success' });
+        setTimeout(() => {
+          setToast(null);
+          router.push('/doacao-analise');
+        }, 1200);
+      } else {
+        setToast({ message: data.error || 'Erro ao enviar doação', type: 'error' });
+        setTimeout(() => setToast(null), 2000);
+      }
+    } catch (error) {
+      setToast({ message: 'Erro de conexão com o servidor.', type: 'error' });
+      setTimeout(() => setToast(null), 2000);
+    }
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F5F5F5' }}>
+      {toast ? <Toast message={toast.message} type={toast.type} /> : null}
       {/* Header e botão de trevos personalizado */}
       <View style={{ width: '100%', alignItems: 'center', marginTop: 32, marginBottom: 8 }}>
         <TouchableOpacity
@@ -119,12 +203,9 @@ export default function DoacaoTab() {
             paddingHorizontal: 38,
             flexDirection: 'row',
             alignItems: 'center',
-            elevation: 6,
             shadowColor: '#2E7D32',
-            shadowOpacity: 0.18,
             shadowRadius: 12,
             shadowOffset: { width: 0, height: 4 },
-            borderWidth: 2,
             borderColor: '#43ea7a',
           }}
           onPress={() => window.location.href = '/trevos'}
@@ -228,6 +309,23 @@ export default function DoacaoTab() {
           </View>
         </View>
 
+        {/* Foto da roupa (web) */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Foto da roupa:</Text>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={e => setFotoRoupa(e.target.files?.[0] || null)}
+            style={{ marginBottom: 8 }}
+          />
+          {fotoRoupa && (
+            <img
+              src={URL.createObjectURL(fotoRoupa)}
+              alt="Foto da roupa"
+              style={{ width: 120, height: 120, borderRadius: 12, marginBottom: 8, objectFit: 'cover' }}
+            />
+          )}
+        </View>
         {/* Descrição */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Descrição do produto:</Text>
@@ -244,7 +342,7 @@ export default function DoacaoTab() {
 
         <TouchableOpacity
           style={{
-            backgroundColor: !destino || !tempoUso || !estado || !tamanho ? '#b7e7c3' : 'linear-gradient(90deg, #43ea7a 0%, #2E7D32 100%)',
+            backgroundColor: !destino || !tempoUso || !estado || !tamanho || !fotoRoupa ? '#b7e7c3' : 'linear-gradient(90deg, #43ea7a 0%, #2E7D32 100%)',
             borderRadius: 18,
             paddingVertical: 16,
             paddingHorizontal: 32,
@@ -255,16 +353,14 @@ export default function DoacaoTab() {
             shadowOpacity: 0.12,
             shadowRadius: 8,
             shadowOffset: { width: 0, height: 2 },
-            opacity: !destino || !tempoUso || !estado || !tamanho ? 0.6 : 1,
+            opacity: !destino || !tempoUso || !estado || !tamanho || !fotoRoupa ? 0.6 : 1,
           }}
           activeOpacity={0.7}
-          onPress={() => {
-            if (destino && tempoUso && estado && tamanho) setConfirmModalVisible(true);
-          }}
-          disabled={!destino || !tempoUso || !estado || !tamanho}
+          onPress={realizarDoacao}
+          disabled={!destino || !tempoUso || !estado || !tamanho || !fotoRoupa}
         >
           <Text style={{
-            color: !destino || !tempoUso || !estado || !tamanho ? '#145c2e' : '#fff',
+            color: !destino || !tempoUso || !estado || !tamanho || !fotoRoupa ? '#145c2e' : '#fff',
             fontWeight: 'bold',
             fontSize: 18,
             letterSpacing: 1,

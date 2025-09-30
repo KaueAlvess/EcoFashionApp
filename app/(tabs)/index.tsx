@@ -1,18 +1,44 @@
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import Toast from '../../components/Toast';
 
 export default function LoginScreen() { // Renomeado para LoginScreen
   const router = useRouter();
   const [email, setEmail] = React.useState("");
   const [senha, setSenha] = React.useState("");
+  const [toast, setToast] = React.useState<{ message: string; type?: 'success' | 'error' } | null>(null);
 
-  // Função para lidar com o login (apenas exemplo)
-  const handleLogin = () => {
-  // Aqui você pode implementar a lógica de autenticação
-  // Redireciona para a área principal do app após login
-  router.push('/explore');
-  // Anotação: Após login, usuário é redirecionado para área de home
+  // Função para lidar com o login
+  const handleLogin = async () => {
+    if (!email || !senha) {
+      alert('Preencha email e senha.');
+      return;
+    }
+    try {
+      const response = await fetch('http://localhost:3001/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, senha }),
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        localStorage.setItem('idUsuario', data.usuario.id.toString());
+        setToast({ message: 'Login realizado com sucesso!', type: 'success' });
+        setTimeout(() => {
+          setToast(null);
+          router.push('/explore');
+        }, 1200);
+      } else {
+        setToast({ message: data.error || 'Email ou senha incorretos.', type: 'error' });
+        setTimeout(() => setToast(null), 2000);
+      }
+    } catch (error) {
+  setToast({ message: 'Erro de conexão com o servidor.', type: 'error' });
+  setTimeout(() => setToast(null), 2000);
+    }
   };
 
   // Função para o botão 'Criar uma conta'
@@ -23,6 +49,7 @@ export default function LoginScreen() { // Renomeado para LoginScreen
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F5F5F5', justifyContent: 'center' }}>
+      {toast ? <Toast message={toast.message} type={toast.type} /> : null}
       {/* Logo e título */}
       <View style={styles.logoContainer}>
         <Image

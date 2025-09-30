@@ -6,7 +6,25 @@ import TrevoTroca from '../../components/TrevoTroca';
 export default function ConfiguracoesScreen() {
   const router = useRouter();
 
-  const quantidadeTrevos = 5;
+  const [quantidadeTrevos, setQuantidadeTrevos] = React.useState(0);
+
+  React.useEffect(() => {
+    // Buscar dados do usuário logado (exemplo simples)
+    const email = localStorage.getItem('email'); // Ajuste para mobile se necessário
+    if (email) {
+      fetch(`http://localhost:3001/api/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, senha: '' }) // senha vazia só para buscar, ajuste conforme sua lógica
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.usuario) {
+            setQuantidadeTrevos(data.usuario.trevos || 0);
+          }
+        });
+    }
+  }, []);
   return (
     <View style={{ flex: 1 }}>
       <TrevoTroca quantidade={quantidadeTrevos} />
