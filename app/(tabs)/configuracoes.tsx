@@ -15,7 +15,7 @@ export default function ConfiguracoesScreen() {
       fetch(`http://localhost:3001/api/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, senha: '' }) // senha vazia só para buscar, ajuste conforme sua lógica
+        body: JSON.stringify({ email, senha: '' })
       })
         .then(res => res.json())
         .then(data => {

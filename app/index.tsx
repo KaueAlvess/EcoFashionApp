@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import Toast from '../../components/Toast';
+import Toast from '../components/Toast';
 
 export default function LoginScreen() { // Renomeado para LoginScreen
   const router = useRouter();
