@@ -30,6 +30,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.18,
   },
   destinoImg: { width: 52, height: 52, borderRadius: 26, marginBottom: 6 },
+  destinoImgWrap: { width: 160, height: 84, borderRadius: 12, justifyContent: 'center', alignItems: 'center', backgroundColor: 'transparent', marginBottom: 6 },
   destinoText: { fontSize: 16, color: '#145c2e', textAlign: 'center', fontWeight: 'bold' },
   optionBtn: {
     backgroundColor: '#e8f8e8',
@@ -67,15 +68,15 @@ const styles = StyleSheet.create({
   modalContent: { backgroundColor: '#fff', borderRadius: 16, padding: 24, alignItems: 'center', width: 320, elevation: 4, position: 'relative' },
   confirmModalContent: { backgroundColor: '#fff', borderRadius: 16, padding: 24, alignItems: 'center', width: 320, elevation: 4, position: 'relative' },
   closeModal: { position: 'absolute', top: 8, right: 12, zIndex: 2 },
-  confirmImg: { width: 60, height: 60, borderRadius: 30, marginTop: 5, marginBottom: 5 },
+  confirmImg: { width: 60, height: 60, borderRadius: 30, marginTop: 5, marginBottom: 5, backgroundColor: 'transparent' },
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#2E7D32', marginBottom: 8, textAlign: 'center' },
 });
 
 const destinos = [
-  { key: 'exercito_salvacao', nome: 'Exército da Salvação', img: require('../../assets/images/bar.png') },
-  { key: 'unibes', nome: 'Unibes', img: require('../../assets/images/icon.png') },
-  { key: 'darua', nome: 'DaRua', img: require('../../assets/images/camiseta.png') },
-  { key: 'bazar', nome: 'Bazar', img: require('../../assets/images/logo.png') },
+  { key: 'exercito_salvacao', nome: 'Exército da Salvação', img: require('../../assets/images/ExercitoSalvaçao.png') },
+  { key: 'unibes', nome: 'Unibes', img: require('../../assets/images/Unibes.png') },
+  { key: 'darua', nome: 'DaRua', img: require('../../assets/images/DaRua.png') },
+  { key: 'bazar', nome: 'Bazar', img: require('../../assets/images/Bazar.png') },
 ];
 
 const tempoUsoOptions = [
@@ -210,13 +211,9 @@ export default function DoacaoTab() {
           }}
           onPress={() => window.location.href = '/trevos'}
         >
-          {/* Ícone de lista */}
+          {/* Ícone de lista (substituído por imagem 'trevo.png') */}
           <View style={{ marginRight: 18 }}>
-            <View style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}>
-              <View style={{ width: 32, height: 6, backgroundColor: '#145c2e', borderRadius: 3, marginBottom: 5 }} />
-              <View style={{ width: 24, height: 6, backgroundColor: '#145c2e', borderRadius: 3, marginBottom: 5 }} />
-              <View style={{ width: 16, height: 6, backgroundColor: '#145c2e', borderRadius: 3 }} />
-            </View>
+            <Image source={require('../../assets/images/trevo.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
           </View>
           {/* Número de trevos */}
           <Text style={{ fontSize: 36, fontWeight: 'bold', color: '#fff', marginLeft: 6, textShadowColor: '#2E7D32', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 2 }}>{quantidadeTrevos}</Text>
@@ -251,7 +248,9 @@ export default function DoacaoTab() {
                 activeOpacity={0.7}
                 onPress={() => setDestino(d.key)}
               >
-                <Image source={d.img} style={styles.destinoImg} />
+                <View style={styles.destinoImgWrap}>
+                  <Image source={d.img} style={styles.destinoImg} resizeMode="contain" />
+                </View>
                 <Text style={styles.destinoText}>{d.nome}</Text>
               </TouchableOpacity>
             ))}
@@ -383,7 +382,7 @@ export default function DoacaoTab() {
               <View style={{ alignItems: 'center', marginBottom: 15 }}>
                 <Text style={{ fontWeight: 'bold' }}>Local de Doação:</Text>
                 {selectedDestino && (
-                  <Image source={selectedDestino.img} style={styles.confirmImg} />
+                  <Image source={selectedDestino.img} style={styles.confirmImg} resizeMode="contain" />
                 )}
                 <Text>{selectedDestino ? selectedDestino.nome : 'Não informado'}</Text>
               </View>

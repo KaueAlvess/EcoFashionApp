@@ -9,7 +9,7 @@ type TrevoTrocaProps = {
 export default function TrevoTroca({ quantidade, onPress }: TrevoTrocaProps) {
   return (
     <TouchableOpacity style={styles.container} onPress={onPress}>
-      <Image source={require('../assets/images/bar.png')} style={styles.icon} />
+      <Image source={require('../assets/images/trevo.png')} style={styles.icon} />
       <Text style={styles.text}>{quantidade}</Text>
     </TouchableOpacity>
   );
