@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 
 const produtos = [
   {
@@ -71,24 +71,136 @@ export default function ExploreScreen() {
     descricao: string;
     imagem: string;
   } | null>(null);
+  const [userTrevos, setUserTrevos] = React.useState<number>(() => {
+    try {
+      const t = localStorage.getItem('trevos');
+      return t ? parseInt(t, 10) : 0;
+    } catch (e) {
+      return 0;
+    }
+  });
+  const COST_PER_ITEM = 3; // custo padrão por troca (pode ajustar)
+  const [selectedCost, setSelectedCost] = React.useState<number | null>(null);
+
+  // fluxo de modais/etapas: 'check' | 'address' | 'loading' | 'success' | 'not_enough' | null
+  const [flowStage, setFlowStage] = React.useState<string | null>(null);
+  const [address, setAddress] = React.useState({ rua: '', numero: '', cidade: '', cep: '' });
+  const [loadingSeconds, setLoadingSeconds] = React.useState<number>(10);
+  const [solicitacoes, setSolicitacoes] = React.useState<Array<{ id: number; produto: any; status: string }>>(() => {
+    try {
+      const s = localStorage.getItem('solicitacoes');
+      return s ? JSON.parse(s) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [requestsModalVisible, setRequestsModalVisible] = React.useState(false);
+
+  // Para facilitar testes locais, garantimos que o usuário possui 10 trevos
+  // Isto sobrescreve apenas o valor localStorage no carregamento desta tela.
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('trevos', '10');
+    } catch (e) {}
+    setUserTrevos(10);
+    // dispatch storage event para outras abas/componentes
+    try {
+      window.dispatchEvent(new StorageEvent('storage', { key: 'trevos', newValue: '10' } as any));
+    } catch (e) {}
+  }, []);
+
+  // Responsividade: recalcula colunas automaticamente conforme largura da tela
+  const { width: windowWidth } = useWindowDimensions();
+  let columns = 5;
+  if (windowWidth < 360) columns = 1; // very small phones
+  else if (windowWidth < 480) columns = 2; // small phones
+  else if (windowWidth < 720) columns = 3; // large phones / small tablets
+  else if (windowWidth < 1024) columns = 4; // tablets
+  else columns = 5; // desktop / wide
+
+  const horizontalPadding = 12 * 2; // container paddingHorizontal * 2
+  const gap = 16; // espaço entre cards
+  const cardWidth = Math.max(120, Math.floor((windowWidth - horizontalPadding - gap * (columns - 1)) / columns));
 
   const handleTroca = (produto: { nome: string; descricao: string; imagem: string }) => {
     setProdutoSelecionado(produto);
+    // iniciar fluxo de verificação
+    // usar saldo local (localStorage) sem chamar backend
+    try {
+      const t = localStorage.getItem('trevos');
+      setUserTrevos(t ? parseInt(t, 10) : 0);
+    } catch (e) {
+      setUserTrevos(0);
+    }
+    // definir custo do item (se o produto tiver propriedade 'custo' use-a)
+    const custo = (produto as any).custo ?? COST_PER_ITEM;
+    setSelectedCost(custo);
+    setFlowStage('check');
     setModalVisible(true);
   };
 
   const fecharModal = () => {
     setModalVisible(false);
     setProdutoSelecionado(null);
+    setFlowStage(null);
+    setAddress({ rua: '', numero: '', cidade: '', cep: '' });
+    setLoadingSeconds(10);
+  };
+
+  const handleConfirmCheck = () => {
+    const custo = selectedCost ?? COST_PER_ITEM;
+    if (userTrevos >= custo) {
+      // seguir para cadastro de endereço
+      setFlowStage('address');
+    } else {
+      setFlowStage('not_enough');
+    }
+  };
+
+  const handleConfirmAddress = () => {
+    // validação simples
+    if (!address.rua || !address.cidade || !address.cep) {
+      alert('Preencha os campos de endereço.');
+      return;
+    }
+    // Simular processamento local sem backend
+    const custo = selectedCost ?? COST_PER_ITEM;
+    if (userTrevos < custo) {
+      setFlowStage('not_enough');
+      return;
+    }
+    setFlowStage('loading');
+    setLoadingSeconds(10);
+    const interval = setInterval(() => {
+      setLoadingSeconds(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          // decrementar trevos localmente e mostrar sucesso
+          const novo = Math.max(0, userTrevos - custo);
+          setUserTrevos(novo);
+          try { localStorage.setItem('trevos', String(novo)); } catch (e) {}
+          setFlowStage('success');
+        }
+        return prev - 1;
+      });
+    }, 1000);
   };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.header}>Roupas</Text>
+      <View style={styles.headerRow}>
+        <Text style={styles.header}>ROUPAS DISPONIVEIS</Text>
+        <TouchableOpacity style={styles.requestsBtn} onPress={() => setRequestsModalVisible(true)}>
+          <Text style={styles.requestsBtnText}>Solicitações em analises</Text>
+        </TouchableOpacity>
+      </View>
       <View style={styles.grid}>
         {produtos.map((produto, idx) => (
-          <View key={idx} style={styles.card}>
-            <Image source={{ uri: produto.imagem }} style={styles.imagem} />
+          <View key={idx} style={[styles.card, { width: cardWidth }] }>
+            <Image source={{ uri: produto.imagem }} style={[
+              styles.imagem,
+              { width: Math.max(64, Math.round(cardWidth * 0.7)), height: Math.max(64, Math.round(cardWidth * 0.7)) }
+            ]} />
             <Text style={styles.nome}>{produto.nome}</Text>
             <Text style={styles.descricao}>{produto.descricao}</Text>
             <TouchableOpacity style={styles.trocaBtn} onPress={() => handleTroca(produto)}>
@@ -98,25 +210,110 @@ export default function ExploreScreen() {
         ))}
       </View>
 
-      {/* Modal de confirmação de troca */}
+      {/* Modal de fluxo de troca (checar trevos -> endereço -> loading -> success / erro) */}
       <Modal visible={modalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <TouchableOpacity style={styles.closeModal} onPress={fecharModal}>
               <Text style={{ fontSize: 24 }}>&times;</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Confirmar Troca</Text>
-            {produtoSelecionado && (
+            <Text style={styles.modalTitle}>Troca</Text>
+
+            {flowStage === 'check' && (
               <>
-                <Image source={{ uri: produtoSelecionado.imagem }} style={styles.modalImg} />
-                <Text style={styles.nome}>{produtoSelecionado.nome}</Text>
-                <Text style={styles.descricao}>{produtoSelecionado.descricao}</Text>
+                {produtoSelecionado && (
+                  <>
+                    <Image source={{ uri: produtoSelecionado.imagem }} style={styles.modalImg} />
+                    <Text style={styles.nome}>{produtoSelecionado.nome}</Text>
+                    <Text style={styles.descricao}>{produtoSelecionado.descricao}</Text>
+                  </>
+                )}
+                <Text style={{ marginTop: 12 }}>Você tem <Text style={{ fontWeight: 'bold' }}>{userTrevos}</Text> trevos.</Text>
+                <Text>Esta troca custa <Text style={{ fontWeight: 'bold' }}>{COST_PER_ITEM}</Text> trevos.</Text>
+                <View style={{ flexDirection: 'row', marginTop: 16, gap: 12 }}>
+                  <TouchableOpacity style={[styles.confirmBtn, { backgroundColor: '#2E7D32' }]} onPress={handleConfirmCheck}>
+                    <Text style={styles.confirmBtnText}>Continuar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.confirmBtn, { backgroundColor: '#aaa' }]} onPress={fecharModal}>
+                    <Text style={styles.confirmBtnText}>Cancelar</Text>
+                  </TouchableOpacity>
+                </View>
               </>
             )}
-            <Text style={{ marginVertical: 12 }}>Deseja confirmar a troca deste produto?</Text>
-            <TouchableOpacity style={styles.confirmBtn} onPress={fecharModal}>
-              <Text style={styles.confirmBtnText}>Confirmar</Text>
+
+            {flowStage === 'not_enough' && (
+              <>
+                <Text style={{ marginVertical: 12 }}>Você não tem trevos suficientes para realizar essa troca.</Text>
+                <Text>Você tem <Text style={{ fontWeight: 'bold' }}>{userTrevos}</Text> e precisa de <Text style={{ fontWeight: 'bold' }}>{COST_PER_ITEM}</Text>.</Text>
+                <TouchableOpacity style={[styles.confirmBtn, { marginTop: 16 }]} onPress={fecharModal}>
+                  <Text style={styles.confirmBtnText}>Fechar</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {flowStage === 'address' && (
+              <>
+                <Text style={{ marginBottom: 8 }}>Informe o endereço para envio:</Text>
+                <TextInput placeholder="Rua" value={address.rua} onChangeText={t => setAddress(a => ({ ...a, rua: t }))} style={styles.input} />
+                <TextInput placeholder="Número" value={address.numero} onChangeText={t => setAddress(a => ({ ...a, numero: t }))} style={styles.input} />
+                <TextInput placeholder="Cidade" value={address.cidade} onChangeText={t => setAddress(a => ({ ...a, cidade: t }))} style={styles.input} />
+                <TextInput placeholder="CEP" value={address.cep} onChangeText={t => setAddress(a => ({ ...a, cep: t }))} style={styles.input} />
+                <TouchableOpacity style={[styles.confirmBtn, { marginTop: 8 }]} onPress={handleConfirmAddress}>
+                  <Text style={styles.confirmBtnText}>Confirmar Endereço</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {flowStage === 'loading' && (
+              <>
+                <Text style={{ marginVertical: 12 }}>Enviando solicitação...</Text>
+                <Text style={{ fontSize: 26, fontWeight: 'bold', color: '#2E7D32' }}>{loadingSeconds}s</Text>
+              </>
+            )}
+
+            {flowStage === 'success' && (
+              <>
+                <Text style={{ marginVertical: 12, fontWeight: 'bold' }}>Troca solicitada com sucesso!</Text>
+                <Text>Estamos processando o envio — o produto será encaminhado em breve.</Text>
+                <TouchableOpacity style={[styles.confirmBtn, { marginTop: 16 }]} onPress={fecharModal}>
+                  <Text style={styles.confirmBtnText}>Fechar</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+          </View>
+        </View>
+      </Modal>
+      {/* Modal de solicitações em análise */}
+      <Modal visible={requestsModalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <TouchableOpacity style={styles.closeModal} onPress={() => setRequestsModalVisible(false)}>
+              <Text style={{ fontSize: 24 }}>&times;</Text>
             </TouchableOpacity>
+            <Text style={styles.modalTitle}>Solicitações em análise</Text>
+            <ScrollView style={{ width: '100%', marginTop: 8 }}>
+              {solicitacoes.length === 0 && <Text>Nenhuma solicitação.</Text>}
+              {solicitacoes.map(s => (
+                <View key={s.id} style={styles.requestCard}>
+                  <Image source={{ uri: s.produto?.imagem }} style={styles.requestImg} />
+                  <View style={styles.requestInfo}>
+                    <Text style={{ fontWeight: 'bold' }}>{s.produto?.nome}</Text>
+                    <Text numberOfLines={2} style={{ color: '#386c3a' }}>{s.produto?.descricao}</Text>
+                  </View>
+                  <View style={{ alignItems: 'center' }}>
+                    {s.status === 'preparando' ? (
+                      <>
+                        <ActivityIndicator size="small" color="#2E7D32" />
+                        <Text style={styles.requestStatus}>preparando</Text>
+                      </>
+                    ) : (
+                      <Text style={styles.requestStatus}>pronto</Text>
+                    )}
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -134,9 +331,14 @@ const styles = StyleSheet.create({
   header: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#2E7D32',
+    color: '#ffffff',
     marginBottom: 16,
     textAlign: 'center',
+    backgroundColor: '#2E7D32',
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   grid: {
     flexDirection: 'row',
@@ -145,43 +347,48 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: '#eaf9ee',
     borderRadius: 12,
     padding: 12,
     alignItems: 'center',
-    width: 170,
     marginBottom: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#c6f7d0',
+    shadowColor: '#2E7D32',
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
   },
   imagem: {
     width: 120,
     height: 120,
     borderRadius: 10,
     marginBottom: 8,
-    backgroundColor: '#eee',
+    backgroundColor: '#f0fff4',
+    borderWidth: 1,
+    borderColor: '#bff0c4',
   },
   nome: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
-    color: '#2E7D32',
+    color: '#145c2e',
     marginBottom: 4,
     textAlign: 'center',
   },
   descricao: {
-    fontSize: 14,
-    color: '#444',
+    fontSize: 12,
+    color: '#386c3a',
     textAlign: 'center',
   },
   trocaBtn: {
     backgroundColor: '#2E7D32',
     paddingVertical: 8,
-    paddingHorizontal: 18,
+    paddingHorizontal: 14,
     borderRadius: 20,
     marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#43ea7a',
   },
   trocaBtnText: {
     color: '#fff',
@@ -234,5 +441,60 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  input: {
+    width: '100%',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    marginBottom: 8,
+  },
+  headerRow: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  requestsBtn: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#c6f7d0',
+  },
+  requestsBtnText: {
+    color: '#145c2e',
+    fontWeight: 'bold',
+  },
+  requestCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    padding: 12,
+    backgroundColor: '#f7fff7',
+    borderRadius: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#dff7df',
+  },
+  requestImg: {
+    width: 64,
+    height: 64,
+    borderRadius: 8,
+    marginRight: 12,
+    backgroundColor: '#eee',
+  },
+  requestInfo: {
+    flex: 1,
+  },
+  requestStatus: {
+    marginLeft: 8,
+    fontWeight: 'bold',
+    color: '#2E7D32',
   },
 });

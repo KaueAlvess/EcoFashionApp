@@ -87,6 +87,41 @@ app.post('/api/login', (req, res) => {
   });
 });
 
+// Buscar usuário por ID
+app.get('/api/usuario/:id', (req, res) => {
+  const id = req.params.id;
+  db.query('SELECT id, nome, email, foto, trevos FROM usuarios WHERE id = ?', [id], (err, results) => {
+    if (err) return res.status(500).json({ error: 'Erro ao buscar usuário.' });
+    if (results.length === 0) return res.status(404).json({ error: 'Usuário não encontrado.' });
+    const usuario = results[0];
+    res.json({ success: true, usuario });
+  });
+});
+
+// Processar troca: debita trevos se houver saldo suficiente
+app.post('/api/troca', (req, res) => {
+  const { usuario_id, custo, produto, endereco } = req.body;
+  if (!usuario_id || typeof custo === 'undefined') {
+    return res.status(400).json({ error: 'Parâmetros ausentes.' });
+  }
+  // Verificar saldo
+  db.query('SELECT trevos FROM usuarios WHERE id = ?', [usuario_id], (err, results) => {
+    if (err) return res.status(500).json({ error: 'Erro ao consultar usuário.' });
+    if (results.length === 0) return res.status(404).json({ error: 'Usuário não encontrado.' });
+    const saldo = results[0].trevos || 0;
+    if (saldo < custo) {
+      return res.json({ success: false, error: 'trevos_insuficientes', saldo });
+    }
+    const novo = saldo - custo;
+    // Atualizar saldo no banco
+    db.query('UPDATE usuarios SET trevos = ? WHERE id = ?', [novo, usuario_id], (err2) => {
+      if (err2) return res.status(500).json({ error: 'Erro ao atualizar saldo.' });
+      // Opcional: registrar a troca em uma tabela 'trocas' (se existir). Para agora, retornamos sucesso.
+      return res.json({ success: true, novoSaldo: novo });
+    });
+  });
+});
+
 // Iniciar servidor
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
