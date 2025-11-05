@@ -50,7 +50,97 @@ db.connect((err) => {
     console.error('Erro ao conectar ao MySQL:', err);
   } else {
     console.log('Conectado ao MySQL!');
+    // Ensure 'role' column exists and create default admin user if missing
+    (async () => {
+      try {
+        // Check if 'role' column exists
+        db.query(
+          "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'usuarios' AND COLUMN_NAME = 'role'",
+          [db.config.database],
+          async (errCol, colResults) => {
+            if (errCol) {
+              console.error('Erro ao checar colunas:', errCol);
+              return;
+            }
+            if (!colResults || colResults.length === 0) {
+              // Add role column (default 'user')
+              db.query("ALTER TABLE usuarios ADD COLUMN role VARCHAR(20) DEFAULT 'user'", (errAlter) => {
+                if (errAlter) console.error('Erro ao adicionar coluna role:', errAlter);
+                else console.log("Coluna 'role' adicionada à tabela usuarios.");
+              });
+            }
+
+            // Check if an admin user already exists
+            db.query("SELECT * FROM usuarios WHERE role = 'admin' LIMIT 1", (errAdmin, adminResults) => {
+              if (errAdmin) {
+                console.error('Erro ao buscar admin:', errAdmin);
+                return;
+              }
+              const defaultEmail = 'admin@ecofashion.local';
+              const defaultPass = '123'; // admin password (plaintext) per user's request
+              if (!adminResults || adminResults.length === 0) {
+                // Create default admin user with plaintext password
+                db.query(
+                  'INSERT INTO usuarios (nome, email, senha, foto, trevos, role) VALUES (?, ?, ?, ?, ?, ?) ',
+                  ['kaue', defaultEmail, defaultPass, null, 0, 'admin'],
+                  (errInsert) => {
+                    if (errInsert) {
+                      if (errInsert.code === 'ER_DUP_ENTRY') {
+                        // If email exists, update role and senha
+                        db.query(
+                          'UPDATE usuarios SET role = ?, senha = ? WHERE email = ?',
+                          ['admin', defaultPass, defaultEmail],
+                          (errUpd) => {
+                            if (errUpd) console.error('Erro ao atualizar role do admin:', errUpd);
+                            else console.log('Usuário admin atualizado com role=admin e senha padrão.');
+                          }
+                        );
+                      } else {
+                        console.error('Erro ao inserir admin default:', errInsert);
+                      }
+                    } else {
+                      console.log('Usuário admin default criado (Administrador) com senha padrão.');
+                    }
+                  }
+                );
+              } else {
+                // Ensure existing admin has role 'admin' and the default password
+                const existing = adminResults[0];
+                if (existing.role !== 'admin' || existing.senha !== defaultPass) {
+                  db.query('UPDATE usuarios SET role = ?, nome = ?, senha = ? WHERE id = ?', ['admin','kaue', defaultPass, existing.id], (errUpd2) => {
+                    if (errUpd2) console.error('Erro ao ajustar role/senha do admin existente:', errUpd2);
+                    else console.log('Role/senha do admin existente ajustada para admin/senha padrão.');
+                  });
+                }
+              }
+            });
+          }
+        );
+      } catch (e) {
+        console.error('Erro na inicialização do admin:', e);
+      }
+    })();
   }
+});
+
+// Admin-specific login endpoint (searches admins by nome or email)
+app.post('/api/admin-login', (req, res) => {
+  const { user, senha } = req.body;
+  if (!user || !senha) {
+    return res.status(400).json({ error: 'Preencha usuário e senha.' });
+  }
+  db.query(
+    "SELECT * FROM usuarios WHERE role = 'admin' AND (email = ? OR nome = ?)",
+    [user, user],
+    (err, results) => {
+      if (err) return res.status(500).json({ error: 'Erro ao buscar usuário.' });
+      if (results.length === 0) return res.status(401).json({ error: 'Administrador não encontrado.' });
+      const usuario = results[0];
+      // Plain-text comparison for admin (per project/demo requirement)
+      if (senha !== usuario.senha) return res.status(401).json({ error: 'Senha incorreta.' });
+      res.json({ success: true, usuario: { id: usuario.id, nome: usuario.nome, email: usuario.email } });
+    }
+  );
 });
 
 // Cadastro

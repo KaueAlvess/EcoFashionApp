@@ -96,6 +96,38 @@ export default function ExploreScreen() {
   });
   const [requestsModalVisible, setRequestsModalVisible] = React.useState(false);
 
+  // Lista de produtos que combina os padrões com produtos adicionados pelo usuário
+  const [listaProdutos, setListaProdutos] = React.useState(() => {
+    try {
+      const custom = JSON.parse(localStorage.getItem('produtos_custom') || '[]');
+      return [...custom, ...produtos];
+    } catch (e) {
+      return produtos;
+    }
+  });
+
+  // Escuta mudanças no localStorage para atualizar a lista (quando o usuário adiciona novas roupas)
+  React.useEffect(() => {
+    const handleStorage = (ev: StorageEvent) => {
+      if (ev.key === 'produtos_custom' || ev.key === '__last_produtos_update') {
+        try {
+          const custom = JSON.parse(localStorage.getItem('produtos_custom') || '[]');
+          setListaProdutos([...custom, ...produtos]);
+        } catch (e) {
+          setListaProdutos(produtos);
+        }
+      }
+    };
+    try {
+      window.addEventListener('storage', handleStorage as any);
+    } catch (e) {}
+    return () => {
+      try {
+        window.removeEventListener('storage', handleStorage as any);
+      } catch (e) {}
+    };
+  }, []);
+
   // Para facilitar testes locais, garantimos que o usuário possui 10 trevos
   // Isto sobrescreve apenas o valor localStorage no carregamento desta tela.
   React.useEffect(() => {
@@ -195,7 +227,7 @@ export default function ExploreScreen() {
         </TouchableOpacity>
       </View>
       <View style={styles.grid}>
-        {produtos.map((produto, idx) => (
+        {listaProdutos.map((produto, idx) => (
           <View key={idx} style={[styles.card, { width: cardWidth }] }>
             <Image source={{ uri: produto.imagem }} style={[
               styles.imagem,

@@ -98,6 +98,12 @@ export default function LoginScreen() { // Renomeado para LoginScreen
           </TouchableOpacity>
           {/* Anotação: Função handleSignup adicionada para o botão de cadastro */}
         </View>
+        {/* Botão para logar como administrador */}
+        <View style={{ marginTop: 12 }}>
+          <TouchableOpacity style={styles.adminButton} onPress={() => router.push('/administracao')}>
+            <Text style={styles.adminButtonText}>Logar como administrador</Text>
+          </TouchableOpacity>
+        </View>
       </View>
       {/* Anotação: Layout modificado para tela de login conforme print enviado */}
     </View>
@@ -200,6 +206,17 @@ const styles = StyleSheet.create({
     color: '#2E7D32',
     fontWeight: 'bold',
     textDecorationLine: 'underline',
+  },
+  adminButton: {
+    backgroundColor: '#2E7D32',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    alignSelf: 'center',
+  },
+  adminButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
   // Anotação: Estilos criados para tela de login conforme print
 });

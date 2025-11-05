@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Toast from '../../components/Toast';
 import TrevoTroca from '../../components/TrevoTroca';
 
@@ -70,6 +70,68 @@ const styles = StyleSheet.create({
   closeModal: { position: 'absolute', top: 8, right: 12, zIndex: 2 },
   confirmImg: { width: 60, height: 60, borderRadius: 30, marginTop: 5, marginBottom: 5, backgroundColor: 'transparent' },
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#2E7D32', marginBottom: 8, textAlign: 'center' },
+  topTabs: {
+    flexDirection: 'row',
+    alignSelf: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 6,
+    marginVertical: 12,
+    elevation: 2,
+  },
+  tabButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+  },
+  activeTab: {
+    backgroundColor: '#c6f7d0',
+  },
+  tabText: {
+    color: '#145c2e',
+    fontSize: 16,
+  },
+  cardsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+    marginBottom: 18,
+    marginTop: 12,
+    width: '100%',
+  },
+  card: {
+    width: 140,
+    height: 160,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#c6f7d0',
+  },
+  addCard: {
+    backgroundColor: '#e8f8e8',
+    borderStyle: 'dashed',
+  },
+  plusText: {
+    fontSize: 36,
+    color: '#2E7D32',
+    marginBottom: 6,
+  },
+  cardImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  cardTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#145c2e',
+  },
 });
 
 const destinos = [
@@ -100,6 +162,11 @@ const tamanhoOptions = ['36', '38', '40', '42', '44', '46', '48', '50'];
 export default function DoacaoTab() {
   const [modalVisible, setModalVisible] = useState(true);
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [activeTopTab, setActiveTopTab] = useState('roupas');
+  const [addModalVisible, setAddModalVisible] = useState(false);
+  const [newNome, setNewNome] = useState('');
+  const [newImagem, setNewImagem] = useState('');
+  const [newDescricao, setNewDescricao] = useState('');
   const [destino, setDestino] = useState('');
   const [tempoUso, setTempoUso] = useState('');
   const [estado, setEstado] = useState('');
@@ -145,6 +212,29 @@ export default function DoacaoTab() {
     });
     if (!result.canceled && result.assets && result.assets.length > 0) {
       setFotoRoupa(result.assets[0].uri);
+    }
+  };
+
+  // Função para selecionar imagem ao adicionar novo produto (suporta web e nativo)
+  const pickImageForNew = async () => {
+    if (Platform.OS === 'web') {
+      // on web we rely on the <input type="file"> fallback rendered in the modal
+      return;
+    }
+    const { launchImageLibraryAsync, requestMediaLibraryPermissionsAsync, MediaTypeOptions } = require('expo-image-picker');
+    const permissionResult = await requestMediaLibraryPermissionsAsync();
+    if (!permissionResult.granted) {
+      alert('Permissão para acessar a galeria é necessária!');
+      return;
+    }
+    const result = await launchImageLibraryAsync({
+      mediaTypes: MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      setNewImagem(result.assets[0].uri);
     }
   };
 
@@ -232,6 +322,129 @@ export default function DoacaoTab() {
               </TouchableOpacity>
               <Text style={styles.modalTitle}>Dados da Doação</Text>
               <Text>Preencha os dados abaixo para realizar sua doação:</Text>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Top tabs (barra no topo da área de doações) */}
+        <View style={styles.topTabs}>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTopTab === 'roupas' && styles.activeTab]}
+            onPress={() => setActiveTopTab('roupas')}
+          >
+            <Text style={[styles.tabText, activeTopTab === 'roupas' && { fontWeight: '700' }]}>Roupas</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTopTab === 'minhas' && styles.activeTab]}
+            onPress={() => setActiveTopTab('minhas')}
+          >
+            <Text style={[styles.tabText, activeTopTab === 'minhas' && { fontWeight: '700' }]}>Minhas Doações</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Cards centralizados abaixo do símbolo de trevo */}
+        <View style={styles.cardsRow}>
+          <View style={styles.card}>
+            <Image source={require('../../assets/images/camiseta.png')} style={styles.cardImage} />
+            <Text style={styles.cardTitle}>Camiseta</Text>
+          </View>
+
+          <TouchableOpacity style={[styles.card, styles.addCard]} onPress={() => setAddModalVisible(true)}>
+            <Text style={styles.plusText}>+</Text>
+            <Text style={styles.cardTitle}>Adicionar</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Modal para adicionar roupa */}
+        <Modal visible={addModalVisible} transparent animationType="slide">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <TouchableOpacity style={styles.closeModal} onPress={() => setAddModalVisible(false)}>
+                <Text style={{ fontSize: 24 }}>&times;</Text>
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>Adicionar Roupa</Text>
+              <TextInput
+                placeholder="Nome da peça"
+                value={newNome}
+                onChangeText={setNewNome}
+                style={[styles.textArea, { height: 44, marginBottom: 8 }]}
+              />
+              {/* Input de arquivo: web usa input[file], nativo usa expo-image-picker */}
+              {Platform.OS === 'web' ? (
+                <>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e: any) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        setNewImagem(reader.result as string);
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                    style={{ marginBottom: 8 }}
+                  />
+                  {newImagem ? (
+                    // preview web image (data URL)
+                    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                    // @ts-ignore
+                    <img src={newImagem} alt="preview" style={{ width: 120, height: 120, borderRadius: 12, marginBottom: 8, objectFit: 'cover' }} />
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <TouchableOpacity style={[styles.optionBtn, { width: '100%', marginBottom: 8 }]} onPress={pickImageForNew}>
+                    <Text style={{ color: '#145c2e', fontWeight: '700', textAlign: 'center' }}>Escolher imagem</Text>
+                  </TouchableOpacity>
+                  {newImagem ? <Image source={{ uri: newImagem }} style={{ width: 120, height: 120, borderRadius: 12, marginBottom: 8 }} /> : null}
+                </>
+              )}
+              <TextInput
+                placeholder="Descrição"
+                value={newDescricao}
+                onChangeText={setNewDescricao}
+                multiline
+                numberOfLines={3}
+                style={[styles.textArea, { height: 80, marginBottom: 12 }]}
+              />
+              <TouchableOpacity
+                style={[styles.optionBtn, { width: 160 }]}
+                onPress={() => {
+                  // validação simples
+                  if (!newNome || !newImagem) {
+                    setToast({ message: 'Preencha nome e imagem.', type: 'error' });
+                    setTimeout(() => setToast(null), 2000);
+                    return;
+                  }
+                  try {
+                    const key = 'produtos_custom';
+                    const existing = JSON.parse(localStorage.getItem(key) || '[]');
+                    const item = { nome: newNome, descricao: newDescricao, imagem: newImagem };
+                    existing.unshift(item);
+                    localStorage.setItem(key, JSON.stringify(existing));
+                    // dispatch storage event to notify other tabs/components
+                    try {
+                      window.dispatchEvent(new StorageEvent('storage', { key, newValue: JSON.stringify(existing) } as any));
+                    } catch (e) {
+                      // fallback: set and remove a flag
+                      localStorage.setItem('__last_produtos_update', Date.now().toString());
+                    }
+                    setToast({ message: 'Roupa adicionada ao Explore!', type: 'success' });
+                    setTimeout(() => setToast(null), 1400);
+                    setAddModalVisible(false);
+                    setNewNome('');
+                    setNewImagem('');
+                    setNewDescricao('');
+                  } catch (e) {
+                    setToast({ message: 'Erro ao adicionar roupa.', type: 'error' });
+                    setTimeout(() => setToast(null), 2000);
+                  }
+                }}
+              >
+                <Text style={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}>Adicionar</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </Modal>

@@ -1,0 +1,213 @@
+import React from 'react';
+import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import Toast from '../components/Toast';
+
+export default function AdministracaoScreen() {
+  const [user, setUser] = React.useState('');
+  const [pass, setPass] = React.useState('');
+  const [toast, setToast] = React.useState<{ message: string; type?: 'success' | 'error' } | null>(null);
+  const [isAdmin, setIsAdmin] = React.useState<boolean>(() => {
+    try {
+      return localStorage.getItem('isAdminAuthenticated') === 'true';
+    } catch (e) {
+      return false;
+    }
+  });
+
+  const handleLogin = () => {
+    // Authenticate against backend admin endpoint
+    (async () => {
+      if (!user || !pass) {
+        setToast({ message: 'Preencha usuário e senha.', type: 'error' });
+        setTimeout(() => setToast(null), 1600);
+        return;
+      }
+      try {
+        const resp = await fetch('http://localhost:3001/api/admin-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user, senha: pass }),
+        });
+        const data = await resp.json();
+        if (resp.ok && data.success) {
+          try { localStorage.setItem('isAdminAuthenticated', 'true'); } catch (e) {}
+          setIsAdmin(true);
+          setUser('');
+          setPass('');
+          setToast({ message: 'Login de administrador realizado!', type: 'success' });
+          setTimeout(() => setToast(null), 1200);
+        } else {
+          setToast({ message: data.error || 'Usuário ou senha incorretos.', type: 'error' });
+          setTimeout(() => setToast(null), 2000);
+        }
+      } catch (e) {
+        setToast({ message: 'Erro de conexão com o servidor.', type: 'error' });
+        setTimeout(() => setToast(null), 2000);
+      }
+    })();
+  };
+
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem('isAdminAuthenticated');
+    } catch (e) {}
+    setIsAdmin(false);
+  };
+
+  if (!isAdmin) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#F5F5F5', justifyContent: 'center' }}>
+        {toast ? <Toast message={toast.message} type={toast.type} /> : null}
+        <View style={styles.logoContainer}>
+          <Image
+            source={require('../assets/images/logo.png')}
+            style={styles.logoLogin}
+            resizeMode="contain"
+          />
+          <Text style={styles.logoTitleLogin}>Ecofashion</Text>
+          <Text style={styles.slogan}>LOGIN DE ADMINISTRADOR</Text>
+        </View>
+
+        <View style={styles.loginCard}>
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputIcon}>👤</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Usuário"
+              value={user}
+              onChangeText={setUser}
+              autoCapitalize="none"
+            />
+          </View>
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputIcon}>🔒</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Senha"
+              value={pass}
+              onChangeText={setPass}
+              secureTextEntry
+            />
+          </View>
+          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+            <Text style={styles.loginButtonText}>Entrar</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Administração — Painel</Text>
+      <Text style={{ marginBottom: 12 }}>Área restrita: apenas administradores podem acessar.</Text>
+      <Text style={{ fontWeight: 'bold', marginBottom: 18 }}>Análises de doações (em breve)</Text>
+      <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+        <Text style={styles.logoutBtnText}>Sair</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  // Copied styles from user login (app/index.tsx) to match appearance
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+    marginTop: 32,
+  },
+  logoLogin: {
+    width: 120,
+    height: 120,
+    marginBottom: 8,
+    borderRadius: 16,
+    backgroundColor: '#EDE7D4',
+  },
+  logoTitleLogin: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#2E7D32',
+    marginBottom: 2,
+  },
+  slogan: {
+    fontSize: 18,
+    color: '#C62828',
+    fontWeight: 'bold',
+    marginBottom: 12,
+    letterSpacing: 1,
+  },
+  loginCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    marginHorizontal: 24,
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F3F3',
+    borderRadius: 8,
+    marginBottom: 12,
+    paddingHorizontal: 12,
+    width: 260,
+    height: 44,
+  },
+  inputIcon: {
+    fontSize: 18,
+    marginRight: 8,
+    color: '#888',
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    color: '#444',
+  },
+  forgotPassword: {
+    alignSelf: 'flex-end',
+    marginBottom: 10,
+  },
+  forgotPasswordText: {
+    color: '#2E7D32',
+    fontSize: 14,
+    textDecorationLine: 'underline',
+  },
+  loginButton: {
+    backgroundColor: '#00C853',
+    borderRadius: 24,
+    paddingVertical: 12,
+    paddingHorizontal: 60,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  loginButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 18,
+  },
+  signupLinks: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  signupText: {
+    fontSize: 14,
+    color: '#888',
+    marginRight: 4,
+  },
+  signupLink: {
+    fontSize: 14,
+    color: '#2E7D32',
+    fontWeight: 'bold',
+    textDecorationLine: 'underline',
+  },
+  container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: '#F5F5F5' },
+  title: { fontSize: 24, fontWeight: 'bold', color: '#2E7D32', marginBottom: 8 },
+  logoutBtn: { backgroundColor: '#C62828', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12 },
+  logoutBtnText: { color: '#fff', fontWeight: 'bold' },
+});
