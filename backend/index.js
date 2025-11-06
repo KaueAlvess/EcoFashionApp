@@ -135,6 +135,29 @@ app.get('/api/doacoes', (req, res) => {
   });
 });
 
+// Delete a donation (admin)
+app.delete('/api/doacao/:id', (req, res) => {
+  const id = req.params.id;
+  if (!id) return res.status(400).json({ error: 'ID ausente.' });
+  db.query('SELECT foto FROM doacoes WHERE id = ?', [id], (err, results) => {
+    if (err) return res.status(500).json({ error: 'Erro ao buscar doação.' });
+    if (!results || results.length === 0) return res.status(404).json({ error: 'Doação não encontrada.' });
+    const foto = results[0].foto;
+    db.query('DELETE FROM doacoes WHERE id = ?', [id], (delErr) => {
+      if (delErr) return res.status(500).json({ error: 'Erro ao remover doação.' });
+      try {
+        if (foto) {
+          const filepath = path.join(__dirname, 'uploads', foto);
+          if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
+        }
+      } catch (e) {
+        console.warn('Não foi possível remover arquivo associado:', e);
+      }
+      return res.json({ success: true });
+    });
+  });
+});
+
 const db = mysql.createConnection({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root', // altere via env

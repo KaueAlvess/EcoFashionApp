@@ -64,6 +64,25 @@ const produtos = [
   },
 ];
 
+// Componente auxiliar que destaca a parte do texto que casa com a query
+function HighlightedText({ text, query, style }: { text: string; query: string; style?: any }) {
+  if (!query) return <Text style={style}>{text}</Text>;
+  const lower = String(text || '').toLowerCase();
+  const q = String(query || '').toLowerCase();
+  const idx = lower.indexOf(q);
+  if (idx === -1) return <Text style={style}>{text}</Text>;
+  const before = text.slice(0, idx);
+  const match = text.slice(idx, idx + q.length);
+  const after = text.slice(idx + q.length);
+  return (
+    <Text style={style}>
+      {before}
+      <Text style={{ backgroundColor: 'rgba(46,125,50,0.12)', color: '#145c2e', fontWeight: '800' }}>{match}</Text>
+      {after}
+    </Text>
+  );
+}
+
 export default function RoupasScreen() {
   const [modalVisible, setModalVisible] = React.useState(false);
   const [produtoSelecionado, setProdutoSelecionado] = React.useState<{
@@ -109,6 +128,30 @@ export default function RoupasScreen() {
       return produtos;
     }
   });
+
+  const [searchQuery, setSearchQuery] = React.useState('');
+  // Debounced query to avoid filtering on every keystroke
+  const [debouncedQuery, setDebouncedQuery] = React.useState(searchQuery);
+  React.useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(String(searchQuery || '').trim().toLowerCase()), 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  // Active chip label (to visually show which chip is selected)
+  const [activeChip, setActiveChip] = React.useState<string | null>(null);
+  // visual focus state for the search input
+  const [searchFocused, setSearchFocused] = React.useState(false);
+  const filteredProdutos = React.useMemo(() => {
+    const q = String(debouncedQuery || '').trim().toLowerCase();
+    if (!q) return listaProdutos;
+    return listaProdutos.filter(p => {
+      try {
+        const nome = String(p.nome || '').toLowerCase();
+        const desc = String(p.descricao || '').toLowerCase();
+        return nome.includes(q) || desc.includes(q);
+      } catch (e) { return false; }
+    });
+  }, [debouncedQuery, listaProdutos]);
 
   // Escuta mudanças no localStorage para atualizar a lista (quando o usuário adiciona novas roupas)
   React.useEffect(() => {
@@ -239,23 +282,92 @@ export default function RoupasScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.headerRow}>
+        <Image source={require('../../assets/images/logo.png')} style={styles.logo} resizeMode="contain" />
         <Text style={styles.header}>ROUPAS DISPONIVEIS</Text>
       </View>
+      {/* Banner atraente abaixo do título e acima dos cards */}
+      <View style={styles.hero}>
+        {/* subtle background trevo for visual flair */}
+        <Image source={require('../../assets/images/trevo.png')} style={styles.heroBg} />
+        <View style={styles.heroTop}>
+          <Image source={require('../../assets/images/logo.png')} style={styles.heroLogo} resizeMode="contain" />
+          <Text style={styles.heroTitle}>Explorar estilos</Text>
+        </View>
+        <Text style={styles.heroSubtitle}>Encontre peças sustentáveis e troque com seus trevos.</Text>
+
+        <View style={styles.searchRow}>
+          <View style={[styles.searchContainer, searchFocused ? styles.searchContainerFocused : null]}>
+            <Text style={styles.searchIcon}>🔎</Text>
+            <TextInput
+              value={searchQuery}
+              onChangeText={t => {
+                setSearchQuery(t);
+                // clear chip selection when user types manually
+                if (activeChip && t.toLowerCase() !== activeChip.toLowerCase()) setActiveChip(null);
+              }}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
+              placeholder="Buscar peça por nome ou descrição"
+              placeholderTextColor="#6b8f74"
+              style={styles.searchInput}
+              clearButtonMode="while-editing"
+            />
+          </View>
+          {searchQuery ? (
+            <TouchableOpacity style={styles.clearBtn} onPress={() => { setSearchQuery(''); setActiveChip(null); }}>
+              <Text style={{ color: '#fff', fontWeight: '700' }}>Limpar</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
+        <View style={styles.chipsRow}>
+          {[
+            { key: 'camiseta', label: 'Camisetas', icon: require('../../assets/images/camiseta.png') },
+            { key: 'moletom', label: 'Moletom' },
+            { key: 'calça', label: 'Calças' },
+            { key: 'jeans', label: 'Jeans' },
+          ].map(ch => (
+            <TouchableOpacity
+              key={ch.key}
+              style={[styles.chip, activeChip === ch.key ? styles.chipActive : null]}
+              onPress={() => { setSearchQuery(ch.key); setActiveChip(ch.key); }}
+            >
+              {ch.icon ? <Image source={ch.icon} style={styles.chipIcon} /> : null}
+              <Text style={[styles.chipText, activeChip === ch.key ? styles.chipTextActive : null]}>{ch.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+      {/* mostra contagem de resultados / sugestão quando vazio */}
+      <View style={{ width: '100%', alignItems: 'center' }}>
+        <Text style={{ color: '#2f6b3a', marginBottom: 8 }}>{filteredProdutos.length} resultado(s)</Text>
+        {filteredProdutos.length === 0 ? (
+          <View style={styles.noResults}>
+            <Text style={{ color: '#2E7D32', fontWeight: '700', marginBottom: 6 }}>Nenhum resultado encontrado</Text>
+            <Text style={{ color: '#356b3a', textAlign: 'center' }}>Tente outras palavras-chave ou limpe a busca para ver todas as peças.</Text>
+          </View>
+        ) : null}
+      </View>
+
       <View style={styles.grid}>
-        {listaProdutos.map((produto, idx) => (
+        {filteredProdutos.map((produto, idx) => (
           <View key={idx} style={[styles.card, { width: cardWidth }] }>
             <Image source={{ uri: produto.imagem }} style={[
               styles.imagem,
               { width: Math.max(64, Math.round(cardWidth * 0.7)), height: Math.max(64, Math.round(cardWidth * 0.7)) }
             ]} />
-            <Text style={styles.nome}>{produto.nome}</Text>
+            {/* destacar as partes do nome que casam com a busca */}
+            <HighlightedText style={styles.nome} text={produto.nome} query={debouncedQuery} />
             <Text style={styles.descricao}>{produto.descricao}</Text>
-            <TouchableOpacity style={styles.trocaBtn} onPress={() => handleTroca(produto)}>
-              <Text style={styles.trocaBtnText}>Trocar</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+              <TouchableOpacity style={styles.trocaBtn} onPress={() => handleTroca(produto)}>
+                <Text style={styles.trocaBtnText}>Trocar</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         ))}
       </View>
+      
 
       {/* Modal de fluxo de troca (checar trevos -> endereço -> loading -> success / erro) */}
       <Modal visible={modalVisible} transparent animationType="fade">
@@ -471,8 +583,147 @@ const styles = StyleSheet.create({
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     marginBottom: 12,
   },
+  logo: {
+    width: 48,
+    height: 48,
+    marginRight: 8,
+    marginBottom: 4,
+  },
+  banner: {
+    alignSelf: 'stretch',
+    marginHorizontal: 12,
+    backgroundColor: '#e9fcec',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 12,
+    alignItems: 'center',
+    shadowColor: '#2E7D32',
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+  },
+  bannerText: {
+    color: '#145c2e',
+    fontWeight: '700',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  bannerSubtitle: {
+    color: '#2E7D32',
+    fontSize: 13,
+    marginTop: 6,
+    textAlign: 'center',
+  },
+  bannerButton: {
+    marginTop: 10,
+    backgroundColor: '#2E7D32',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+  },
+  bannerImage: {
+    width: 140,
+    height: 56,
+    marginBottom: 8,
+  },
+  bannerButtonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  bannerButtonIcon: {
+    width: 22,
+    height: 22,
+    marginRight: 8,
+  },
+  searchRow: {
+    width: '100%',
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    minWidth: 160,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#dfeee0',
+    color: '#145c2e',
+  },
+  searchContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: '#e6f1e8',
+    shadowColor: '#2E7D32',
+    shadowOpacity: 0.02,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  searchContainerFocused: {
+    borderColor: '#2E7D32',
+    shadowOpacity: 0.12,
+    elevation: 4,
+  },
+  searchIcon: {
+    marginRight: 8,
+    fontSize: 16,
+    color: '#2E7D32',
+  },
+  clearBtn: {
+    backgroundColor: '#2E7D32',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 18,
+  },
+  bannerButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  hero: {
+    alignSelf: 'stretch',
+    marginHorizontal: 12,
+    backgroundColor: '#eaf7ef',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+    alignItems: 'center',
+    elevation: 3,
+  },
+  heroBg: {
+    position: 'absolute',
+    right: -18,
+    top: -18,
+    width: 140,
+    height: 140,
+    opacity: 0.06,
+    transform: [{ rotate: '18deg' }],
+  },
+  heroTop: { flexDirection: 'column', alignItems: 'center', gap: 6, marginBottom: 6 },
+  heroLogo: { width: 56, height: 56, marginBottom: 4 },
+  heroTitle: { fontSize: 18, fontWeight: '800', color: '#145c2e', textAlign: 'center' },
+  heroSubtitle: { color: '#356b3a', marginBottom: 8, marginTop: 2, textAlign: 'center' },
+  chipsRow: { flexDirection: 'row', gap: 10, marginTop: 12, flexWrap: 'wrap', justifyContent: 'center' },
+  chip: { backgroundColor: '#fff', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 18, flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: '#dfeee0', marginRight: 8, marginBottom: 8 },
+  chipIcon: { width: 20, height: 20 },
+  chipText: { color: '#145c2e', fontWeight: '700' },
+  chipActive: { backgroundColor: '#2E7D32', borderColor: '#1f5a26' },
+  chipTextActive: { color: '#fff' },
+  noResults: { width: '90%', backgroundColor: '#f1fbf5', borderRadius: 10, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: '#dfeee0', marginBottom: 12 },
   /* requests UI removed per user request */
 });

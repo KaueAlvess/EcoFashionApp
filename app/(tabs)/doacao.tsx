@@ -133,13 +133,151 @@ import TrevoTroca from '../../components/TrevoTroca';
                       color: '#145c2e',
                     },
                     subtitle: { fontSize: 14, color: '#2E7D32', textAlign: 'center', marginHorizontal: 10, marginTop: 6 },
+                    banner: {
+                      alignSelf: 'stretch',
+                      marginHorizontal: 12,
+                      backgroundColor: '#e8f8ec',
+                      borderRadius: 12,
+                      paddingVertical: 12,
+                      paddingHorizontal: 14,
+                      marginBottom: 12,
+                      alignItems: 'center',
+                      shadowColor: '#2E7D32',
+                      shadowOpacity: 0.08,
+                      shadowRadius: 8,
+                      shadowOffset: { width: 0, height: 3 },
+                      elevation: 3,
+                    },
+                    bannerText: {
+                      color: '#145c2e',
+                      fontWeight: '700',
+                      fontSize: 15,
+                      textAlign: 'center',
+                    },
+                    bannerSubtitle: {
+                      color: '#2E7D32',
+                      fontSize: 13,
+                      marginTop: 6,
+                      textAlign: 'center',
+                    },
+                    bannerButton: {
+                      marginTop: 10,
+                      backgroundColor: '#2E7D32',
+                      paddingVertical: 8,
+                      paddingHorizontal: 16,
+                      borderRadius: 20,
+                    },
+                    bannerButtonText: {
+                      color: '#fff',
+                      fontWeight: '700',
+                      fontSize: 14,
+                    },
+                    featuredCardWrap: {
+                      width: '100%',
+                      alignItems: 'center',
+                      marginBottom: 8,
+                    },
+                    
+                    featuredAccent: {
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: 8,
+                      borderTopLeftRadius: 16,
+                      borderTopRightRadius: 16,
+                      backgroundColor: '#43ea7a',
+                    },
+                    featuredImage: {
+                      width: 180,
+                      height: 180,
+                      borderRadius: 12,
+                      marginTop: 12,
+                      marginBottom: 12,
+                    },
+                    featuredCard: {
+                      width: '100%',
+                      backgroundColor: '#ffffff',
+                      borderRadius: 16,
+                      paddingVertical: 20,
+                      paddingHorizontal: 18,
+                      alignItems: 'center',
+                      elevation: 6,
+                      shadowColor: '#000',
+                      shadowOpacity: 0.08,
+                      shadowRadius: 12,
+                      shadowOffset: { width: 0, height: 6 },
+                    },
+                    featuredTitle: {
+                      fontSize: 20,
+                      fontWeight: '900',
+                      color: '#145c2e',
+                      textAlign: 'center',
+                      marginBottom: 6,
+                    },
+                    featuredDesc: {
+                      fontSize: 14,
+                      color: '#486b4b',
+                      textAlign: 'center',
+                      marginBottom: 14,
+                      lineHeight: 20,
+                    },
+                    featuredButton: {
+                      backgroundColor: '#2E7D32',
+                      paddingVertical: 12,
+                      paddingHorizontal: 28,
+                      borderRadius: 30,
+                      shadowColor: '#2E7D32',
+                      shadowOpacity: 0.25,
+                      shadowRadius: 8,
+                      shadowOffset: { width: 0, height: 4 },
+                      elevation: 4,
+                    },
+                    featuredButtonText: {
+                      color: '#fff',
+                      fontWeight: '800',
+                      fontSize: 16,
+                    },
+                    titleLink: {
+                      fontSize: 12,
+                      color: '#2E7D32',
+                      marginTop: 6,
+                      textDecorationLine: 'underline',
+                    },
+                    headerCard: {
+                      width: '100%',
+                      backgroundColor: '#f0fff4',
+                      borderRadius: 14,
+                      paddingVertical: 12,
+                      paddingHorizontal: 14,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginBottom: 12,
+                      borderWidth: 1,
+                      borderColor: '#dff6e8',
+                    },
+                    headerCardEmoji: {
+                      fontSize: 28,
+                      marginRight: 8,
+                    },
+                    headerCardTitle: {
+                      fontSize: 16,
+                      fontWeight: '800',
+                      color: '#145c2e',
+                    },
+                    headerCardSubtitle: {
+                      fontSize: 12,
+                      color: '#2E7D32',
+                      marginTop: 4,
+                    },
                   });
 
                   const destinos = [
                     { key: 'exercito_salvacao', nome: 'Exército da Salvação', img: require('../../assets/images/ExercitoSalvaçao.png') },
                     { key: 'unibes', nome: 'Unibes', img: require('../../assets/images/Unibes.png') },
                     { key: 'darua', nome: 'DaRua', img: require('../../assets/images/DaRua.png') },
-                    { key: 'bazar', nome: 'Bazar', img: require('../../assets/images/Bazar.png') },
+                    { key: 'bazar', nome: 'Bazar', img: require('../../assets/images/trevo.png') },
                   ];
 
                   const tempoUsoOptions = [
@@ -284,19 +422,33 @@ import TrevoTroca from '../../components/TrevoTroca';
                         <TrevoTroca quantidade={quantidadeTrevos} />
 
                         <ScrollView contentContainerStyle={styles.container}>
-                          <Text style={styles.title}>doe sua roupa e ganhe trevos de troca</Text>
-
-                          {/* Centraliza um único card + card de adicionar ao lado */}
-                          <View style={[styles.cardsRow, { justifyContent: 'center', alignItems: 'center' }]}> 
-                            <View style={[styles.card, { marginRight: 12 }]}> 
-                              <Image source={require('../../assets/images/camiseta.png')} style={styles.cardImage} />
-                              {/* O usuário pediu que o card com ícone de camiseta não tenha nome */}
+                          <TouchableOpacity onPress={() => router.push('/explore')} activeOpacity={0.85} style={styles.headerCard}>
+                            <Text style={styles.headerCardEmoji}>🔎</Text>
+                            <View style={{ alignItems: 'center' }}>
+                              <Text style={styles.headerCardTitle}>Doe sua roupa e ganhe trevos de troca</Text>
+                              <Text style={styles.headerCardSubtitle}>Visite a área de Explorar para ver peças disponíveis →</Text>
                             </View>
+                          </TouchableOpacity>
 
-                            <TouchableOpacity style={[styles.card, styles.addCard]} onPress={() => setAddModalVisible(true)}>
-                              <Text style={styles.plusText}>+</Text>
-                              <Text style={styles.cardTitle}>Adicionar</Text>
-                            </TouchableOpacity>
+                          {/* Banner atraente acima do card de camiseta */}
+                          <View style={styles.banner}>
+                            <Text style={styles.bannerText}>🌱 Doe com propósito — ganhe trevos e renove seu guarda-roupa</Text>
+                            <Text style={styles.bannerSubtitle}>Sua doação vai para a área de Roupas e poderá ser adquirida por outras pessoas através da troca de roupas.</Text>
+                            {/* botão de adicionar removido daqui para manter apenas o CTA no featured card */}
+                          </View>
+
+                          {/* Featured card: substitui os cards por um layout mais atrativo */}
+                          <View style={styles.featuredCardWrap}>
+                            <View style={styles.featuredCard}>
+                              {/* faixa de destaque no topo do card */}
+                              <View style={styles.featuredAccent} />
+                              <Image source={require('../../assets/images/camiseta.png')} style={styles.featuredImage} />
+                              <Text style={styles.featuredTitle}>Doe uma peça, ganhe trevos ✨</Text>
+                              <Text style={styles.featuredDesc}>Faça sua doação de forma rápida e responsável. Cada doação válida gera trevos que poderão ser usados por outras pessoas na área de Roupas.</Text>
+                              <TouchableOpacity style={styles.featuredButton} onPress={() => setAddModalVisible(true)} activeOpacity={0.85}>
+                                <Text style={styles.featuredButtonText}>✨ Adicionar peça</Text>
+                              </TouchableOpacity>
+                            </View>
                           </View>
 
                           {/* Título e subtítulo explicando as outras opções de doações */}

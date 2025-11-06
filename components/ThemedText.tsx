@@ -42,10 +42,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     fontWeight: '600',
+    // use SpaceMono when available for headings/semi-bold text
+    fontFamily: 'SpaceMono',
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
+    fontFamily: 'SpaceMono',
     lineHeight: 32,
   },
   subtitle: {

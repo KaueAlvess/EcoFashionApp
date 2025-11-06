@@ -88,6 +88,22 @@ export default function AdministracaoScreen() {
     })();
   };
 
+  const handleRemove = async (id: number) => {
+    try {
+      const resp = await fetch(`http://localhost:3001/api/doacao/${id}`, { method: 'DELETE' });
+      const data = await resp.json();
+      if (resp.ok && data.success) {
+        setDoacoes(prev => prev.filter(d => d.id !== id));
+        setToast({ message: 'Doação removida', type: 'success' });
+      } else {
+        setToast({ message: data.error || 'Erro ao remover', type: 'error' });
+      }
+    } catch (e) {
+      setToast({ message: 'Erro de conexão', type: 'error' });
+    }
+    setTimeout(() => setToast(null), 1600);
+  };
+
   if (!isAdmin) {
     return (
       <View style={{ flex: 1, backgroundColor: '#F5F5F5', justifyContent: 'center' }}>
@@ -156,6 +172,9 @@ export default function AdministracaoScreen() {
                 <Text style={{ fontWeight: 'bold' }}>{d.descricao || 'Sem descrição'}</Text>
                 <Text style={{ color: '#666' }}>Destino: {d.destino}</Text>
                 <Text style={{ color: '#666' }}>Estado: {d.estado}</Text>
+                <TouchableOpacity style={{ marginTop: 8, backgroundColor: '#B71C1C', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }} onPress={() => handleRemove(d.id)}>
+                  <Text style={{ color: '#fff', fontWeight: '700' }}>Remover</Text>
+                </TouchableOpacity>
               </View>
             ))}
           </ScrollView>

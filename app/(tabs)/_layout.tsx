@@ -11,21 +11,36 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  
+  
 
   return (
     
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarInactiveTintColor: Colors[colorScheme ?? 'light'].tabIconDefault,
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarBackground: TabBarBackground,
+        tabBarShowLabel: true,
+        tabBarLabelStyle: { fontSize: 12, fontWeight: '700' },
         tabBarStyle: Platform.select({
           ios: {
             // Use a transparent background on iOS to show the blur effect
             position: 'absolute',
+            height: 72,
+            paddingTop: 8,
+            paddingBottom: 12,
+            alignItems: 'center',
+            justifyContent: 'center',
           },
-          default: {},
+          default: {
+            height: 70,
+            paddingBottom: 10,
+            alignItems: 'center',
+            justifyContent: 'center',
+          },
         }),
       }}>
       <Tabs.Screen
@@ -65,6 +80,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="gift.fill" color={color} />,
         }}
       />
+      
       <Tabs.Screen
         name="configuracoes"
         options={{
