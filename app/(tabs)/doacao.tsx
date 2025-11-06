@@ -1,622 +1,434 @@
+import storage from '@/utils/storage';
 import React, { useState } from 'react';
 import { Image, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Toast from '../../components/Toast';
 import TrevoTroca from '../../components/TrevoTroca';
 
-const styles = StyleSheet.create({
-  container: { padding: 24, backgroundColor: '#F5F5F5', alignItems: 'center' },
-  title: { fontSize: 22, fontWeight: 'bold', marginBottom: 12, color: '#2E7D32', textAlign: 'center' },
-  section: { marginBottom: 18, width: '100%', alignItems: 'center' },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#388E3C', marginBottom: 8, textAlign: 'center' },
-  optionsRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12 },
-  destinoOption: {
-    alignItems: 'center',
-    marginHorizontal: 8,
-    padding: 12,
-    borderRadius: 16,
-    backgroundColor: '#e8f8e8',
-    elevation: 3,
-    borderWidth: 2,
-    borderColor: '#43ea7a',
-    shadowColor: '#2E7D32',
-    shadowOpacity: 0.10,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-  },
-  selectedOption: {
-    borderColor: '#2E7D32',
-    backgroundColor: '#c6f7d0',
-    elevation: 5,
-    shadowOpacity: 0.18,
-  },
-  destinoImg: { width: 52, height: 52, borderRadius: 26, marginBottom: 6 },
-  destinoImgWrap: { width: 160, height: 84, borderRadius: 12, justifyContent: 'center', alignItems: 'center', backgroundColor: 'transparent', marginBottom: 6 },
-  destinoText: { fontSize: 16, color: '#145c2e', textAlign: 'center', fontWeight: 'bold' },
-  optionBtn: {
-    backgroundColor: '#e8f8e8',
-    borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    margin: 6,
-    elevation: 2,
-    borderWidth: 2,
-    borderColor: '#43ea7a',
-    shadowColor: '#2E7D32',
-    shadowOpacity: 0.10,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-  },
-  textArea: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    minHeight: 80,
-    width: '100%',
-    marginTop: 8,
-    marginBottom: 8,
-    textAlignVertical: 'top',
-    borderWidth: 2,
-    borderColor: '#43ea7a',
-    shadowColor: '#2E7D32',
-    shadowOpacity: 0.10,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    fontSize: 16,
-    color: '#145c2e',
-  },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { backgroundColor: '#fff', borderRadius: 16, padding: 24, alignItems: 'center', width: 320, elevation: 4, position: 'relative' },
-  confirmModalContent: { backgroundColor: '#fff', borderRadius: 16, padding: 24, alignItems: 'center', width: 320, elevation: 4, position: 'relative' },
-  closeModal: { position: 'absolute', top: 8, right: 12, zIndex: 2 },
-  confirmImg: { width: 60, height: 60, borderRadius: 30, marginTop: 5, marginBottom: 5, backgroundColor: 'transparent' },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#2E7D32', marginBottom: 8, textAlign: 'center' },
-  topTabs: {
-    flexDirection: 'row',
-    alignSelf: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    padding: 6,
-    marginVertical: 12,
-    elevation: 2,
-  },
-  tabButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-  },
-  activeTab: {
-    backgroundColor: '#c6f7d0',
-  },
-  tabText: {
-    color: '#145c2e',
-    fontSize: 16,
-  },
-  cardsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 16,
-    marginBottom: 18,
-    marginTop: 12,
-    width: '100%',
-  },
-  card: {
-    width: 140,
-    height: 160,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 8,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: '#c6f7d0',
-  },
-  addCard: {
-    backgroundColor: '#e8f8e8',
-    borderStyle: 'dashed',
-  },
-  plusText: {
-    fontSize: 36,
-    color: '#2E7D32',
-    marginBottom: 6,
-  },
-  cardImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#145c2e',
-  },
-});
+                  const styles = StyleSheet.create({
+                    container: { padding: 24, backgroundColor: '#F5F5F5', alignItems: 'center' },
+                    title: { fontSize: 22, fontWeight: 'bold', marginBottom: 12, color: '#2E7D32', textAlign: 'center' },
+                    section: { marginBottom: 18, width: '100%', alignItems: 'center' },
+                    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#388E3C', marginBottom: 8, textAlign: 'center' },
+                    optionsRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12 },
+                    destinoOption: {
+                      alignItems: 'center',
+                      marginHorizontal: 8,
+                      padding: 12,
+                      borderRadius: 16,
+                      backgroundColor: '#e8f8e8',
+                      elevation: 3,
+                      borderWidth: 2,
+                      borderColor: '#43ea7a',
+                      shadowColor: '#2E7D32',
+                      shadowOpacity: 0.10,
+                      shadowRadius: 6,
+                      shadowOffset: { width: 0, height: 2 },
+                    },
+                    selectedOption: {
+                      borderColor: '#2E7D32',
+                      backgroundColor: '#c6f7d0',
+                      elevation: 5,
+                      shadowOpacity: 0.18,
+                    },
+                    destinoImg: { width: 52, height: 52, borderRadius: 26, marginBottom: 6 },
+                    destinoImgWrap: { width: 160, height: 84, borderRadius: 12, justifyContent: 'center', alignItems: 'center', backgroundColor: 'transparent', marginBottom: 6 },
+                    optionBtn: {
+                      backgroundColor: '#e8f8e8',
+                      borderRadius: 14,
+                      paddingVertical: 10,
+                      paddingHorizontal: 18,
+                      margin: 6,
+                      elevation: 2,
+                      borderWidth: 2,
+                      borderColor: '#43ea7a',
+                      shadowColor: '#2E7D32',
+                      shadowOpacity: 0.10,
+                      shadowRadius: 6,
+                      shadowOffset: { width: 0, height: 2 },
+                    },
+                    textArea: {
+                      backgroundColor: '#fff',
+                      borderRadius: 16,
+                      padding: 16,
+                      minHeight: 80,
+                      width: '100%',
+                      marginTop: 8,
+                      marginBottom: 8,
+                      textAlignVertical: 'top',
+                      borderWidth: 2,
+                      borderColor: '#43ea7a',
+                      shadowColor: '#2E7D32',
+                      shadowOpacity: 0.10,
+                      shadowRadius: 6,
+                      shadowOffset: { width: 0, height: 2 },
+                      fontSize: 16,
+                      color: '#145c2e',
+                    },
+                    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
+                    modalContent: { backgroundColor: '#fff', borderRadius: 16, padding: 24, alignItems: 'center', width: 320, elevation: 4, position: 'relative' },
+                    confirmModalContent: { backgroundColor: '#fff', borderRadius: 16, padding: 24, alignItems: 'center', width: 320, elevation: 4, position: 'relative' },
+                    closeModal: { position: 'absolute', top: 8, right: 12, zIndex: 2 },
+                    confirmImg: { width: 60, height: 60, borderRadius: 30, marginTop: 5, marginBottom: 5, backgroundColor: 'transparent' },
+                    modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#2E7D32', marginBottom: 8, textAlign: 'center' },
+                    topTabs: {
+                      flexDirection: 'row',
+                      alignSelf: 'center',
+                      backgroundColor: '#fff',
+                      borderRadius: 24,
+                      padding: 6,
+                      marginVertical: 12,
+                      elevation: 2,
+                    },
+                    tabButton: {
+                      paddingVertical: 8,
+                      paddingHorizontal: 16,
+                      borderRadius: 20,
+                    },
+                    activeTab: {
+                      backgroundColor: '#c6f7d0',
+                    },
+                    tabText: {
+                      color: '#145c2e',
+                      fontSize: 16,
+                    },
+                    cardsRow: {
+                      flexDirection: 'row',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      gap: 16,
+                      marginBottom: 18,
+                      marginTop: 12,
+                      width: '100%',
+                    },
+                    card: {
+                      width: 140,
+                      height: 160,
+                      backgroundColor: '#fff',
+                      borderRadius: 12,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginHorizontal: 8,
+                      elevation: 3,
+                      borderWidth: 1,
+                      borderColor: '#c6f7d0',
+                    },
+                    addCard: {
+                      backgroundColor: '#e8f8e8',
+                      borderStyle: 'dashed',
+                    },
+                    plusText: {
+                      fontSize: 36,
+                      color: '#2E7D32',
+                      marginBottom: 6,
+                    },
+                    cardImage: {
+                      width: 100,
+                      height: 100,
+                      borderRadius: 8,
+                      marginBottom: 8,
+                    },
+                    cardTitle: {
+                      fontSize: 14,
+                      fontWeight: 'bold',
+                      color: '#145c2e',
+                    },
+                    subtitle: { fontSize: 14, color: '#2E7D32', textAlign: 'center', marginHorizontal: 10, marginTop: 6 },
+                  });
 
-const destinos = [
-  { key: 'exercito_salvacao', nome: 'Exército da Salvação', img: require('../../assets/images/ExercitoSalvaçao.png') },
-  { key: 'unibes', nome: 'Unibes', img: require('../../assets/images/Unibes.png') },
-  { key: 'darua', nome: 'DaRua', img: require('../../assets/images/DaRua.png') },
-  { key: 'bazar', nome: 'Bazar', img: require('../../assets/images/Bazar.png') },
-];
+                  const destinos = [
+                    { key: 'exercito_salvacao', nome: 'Exército da Salvação', img: require('../../assets/images/ExercitoSalvaçao.png') },
+                    { key: 'unibes', nome: 'Unibes', img: require('../../assets/images/Unibes.png') },
+                    { key: 'darua', nome: 'DaRua', img: require('../../assets/images/DaRua.png') },
+                    { key: 'bazar', nome: 'Bazar', img: require('../../assets/images/Bazar.png') },
+                  ];
 
-const tempoUsoOptions = [
-  { label: '1 a 6 meses', value: '1-6m' },
-  { label: '6 meses a 1 ano', value: '6m-1a' },
-  { label: '1 ano a 2 anos', value: '1a-2a' },
-  { label: '3 a 5 anos', value: '3-5a' },
-  { label: '5 a 7 anos', value: '5-7a' },
-  { label: '8 anos ou mais', value: '8+a' },
-];
+                  const tempoUsoOptions = [
+                    { label: '1 a 6 meses', value: '1-6m' },
+                    { label: '6 meses a 1 ano', value: '6m-1a' },
+                    { label: '1 ano a 2 anos', value: '1a-2a' },
+                    { label: '3 a 5 anos', value: '3-5a' },
+                    { label: '5 a 7 anos', value: '5-7a' },
+                    { label: '8 anos ou mais', value: '8+a' },
+                  ];
 
-const estadoOptions = [
-  { label: 'Ruim', value: 'ruim' },
-  { label: 'Ok', value: 'ok' },
-  { label: 'Bom', value: 'bom' },
-  { label: 'Muito bom', value: 'muito_bom' },
-];
+                  const estadoOptions = [
+                    { label: 'Ruim', value: 'ruim' },
+                    { label: 'Ok', value: 'ok' },
+                    { label: 'Bom', value: 'bom' },
+                    { label: 'Muito bom', value: 'muito_bom' },
+                  ];
 
-const tamanhoOptions = ['36', '38', '40', '42', '44', '46', '48', '50'];
+                  const tamanhoOptions = ['36', '38', '40', '42', '44', '46', '48', '50'];
 
-export default function DoacaoTab() {
-  const [modalVisible, setModalVisible] = useState(true);
-  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
-  const [activeTopTab, setActiveTopTab] = useState('roupas');
-  const [addModalVisible, setAddModalVisible] = useState(false);
-  const [newNome, setNewNome] = useState('');
-  const [newImagem, setNewImagem] = useState('');
-  const [newDescricao, setNewDescricao] = useState('');
-  const [destino, setDestino] = useState('');
-  const [tempoUso, setTempoUso] = useState('');
-  const [estado, setEstado] = useState('');
-  const [tamanho, setTamanho] = useState('');
-  const [descricao, setDescricao] = useState('');
-  const [fotoRoupa, setFotoRoupa] = useState<File | null>(null);
-  const [toast, setToast] = useState<{ message: string; type?: 'success' | 'error' } | null>(null);
-  const router = require('expo-router').useRouter();
+                  export default function DoacaoTab() {
+                    const [modalVisible, setModalVisible] = useState(true);
+                    const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+                    const [activeTopTab, setActiveTopTab] = useState('roupas');
+                    const [addModalVisible, setAddModalVisible] = useState(false);
+                    const [newNome, setNewNome] = useState('');
+                    const [newImagem, setNewImagem] = useState('');
+                    const [newDescricao, setNewDescricao] = useState('');
+                    const [destino, setDestino] = useState('');
+                    const [tempoUso, setTempoUso] = useState('');
+                    const [estado, setEstado] = useState('');
+                    const [tamanho, setTamanho] = useState('');
+                    const [descricao, setDescricao] = useState('');
+                    const [fotoRoupa, setFotoRoupa] = useState<string | null>(null);
+                    const [toast, setToast] = useState<{ message: string; type?: 'success' | 'error' } | null>(null);
+                    const router = require('expo-router').useRouter();
 
-  const selectedDestino = destinos.find(d => d.key === destino);
-  const [quantidadeTrevos, setQuantidadeTrevos] = React.useState(0);
+                    const selectedDestino = destinos.find(d => d.key === destino);
+                    const [quantidadeTrevos, setQuantidadeTrevos] = React.useState(0);
 
-  React.useEffect(() => {
-    const email = localStorage.getItem('email'); // Ajuste para mobile se necessário
-    if (email) {
-      fetch(`http://localhost:3001/api/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, senha: '' }) // senha vazia só para buscar, ajuste conforme sua lógica
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.success && data.usuario) {
-            setQuantidadeTrevos(data.usuario.trevos || 0);
-          }
-        });
-    }
-  }, []);
+                    React.useEffect(() => {
+                      (async () => {
+                        try {
+                          const email = await storage.getItem('email');
+                          if (email) {
+                            const res = await fetch(`http://localhost:3001/api/login`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ email, senha: '' })
+                            });
+                            const data = await res.json();
+                            if (data.success && data.usuario) {
+                              setQuantidadeTrevos(data.usuario.trevos || 0);
+                            }
+                          }
+                        } catch (e) {
+                          // ignore
+                        }
+                      })();
+                    }, []);
 
-  // Função para selecionar foto
-  const selecionarFoto = async () => {
-    const { launchImageLibraryAsync, requestMediaLibraryPermissionsAsync, MediaTypeOptions } = require('expo-image-picker');
-    const permissionResult = await requestMediaLibraryPermissionsAsync();
-    if (!permissionResult.granted) {
-      alert('Permissão para acessar a galeria é necessária!');
-      return;
-    }
-    const result = await launchImageLibraryAsync({
-      mediaTypes: MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 1,
-    });
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      setFotoRoupa(result.assets[0].uri);
-    }
-  };
+                    const selecionarFoto = async () => {
+                      const { launchImageLibraryAsync, requestMediaLibraryPermissionsAsync, MediaTypeOptions } = require('expo-image-picker');
+                      const permissionResult = await requestMediaLibraryPermissionsAsync();
+                      if (!permissionResult.granted) {
+                        alert('Permissão para acessar a galeria é necessária!');
+                        return;
+                      }
+                      const result = await launchImageLibraryAsync({
+                        mediaTypes: MediaTypeOptions.Images,
+                        allowsEditing: true,
+                        aspect: [1, 1],
+                        quality: 1,
+                      });
+                      if (!result.canceled && result.assets && result.assets.length > 0) {
+                        setFotoRoupa(result.assets[0].uri);
+                      }
+                    };
 
-  // Função para selecionar imagem ao adicionar novo produto (suporta web e nativo)
-  const pickImageForNew = async () => {
-    if (Platform.OS === 'web') {
-      // on web we rely on the <input type="file"> fallback rendered in the modal
-      return;
-    }
-    const { launchImageLibraryAsync, requestMediaLibraryPermissionsAsync, MediaTypeOptions } = require('expo-image-picker');
-    const permissionResult = await requestMediaLibraryPermissionsAsync();
-    if (!permissionResult.granted) {
-      alert('Permissão para acessar a galeria é necessária!');
-      return;
-    }
-    const result = await launchImageLibraryAsync({
-      mediaTypes: MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      setNewImagem(result.assets[0].uri);
-    }
-  };
+                    const pickImageForNew = async () => {
+                      if (Platform.OS === 'web') return;
+                      const { launchImageLibraryAsync, requestMediaLibraryPermissionsAsync, MediaTypeOptions } = require('expo-image-picker');
+                      const permissionResult = await requestMediaLibraryPermissionsAsync();
+                      if (!permissionResult.granted) {
+                        alert('Permissão para acessar a galeria é necessária!');
+                        return;
+                      }
+                      const result = await launchImageLibraryAsync({
+                        mediaTypes: MediaTypeOptions.Images,
+                        allowsEditing: true,
+                        aspect: [1, 1],
+                        quality: 0.8,
+                      });
+                      if (!result.canceled && result.assets && result.assets.length > 0) {
+                        setNewImagem(result.assets[0].uri);
+                      }
+                    };
 
-  // Função para realizar doação
-  const realizarDoacao = async () => {
-    try {
-      const idUsuario = localStorage.getItem('idUsuario');
-      if (!idUsuario) {
-        setToast({ message: 'Usuário não identificado. Faça login novamente.', type: 'error' });
-        setTimeout(() => setToast(null), 2000);
-        return;
-      }
-      const formData = new FormData();
-      formData.append('usuario_id', idUsuario);
-      formData.append('descricao', descricao);
-      formData.append('destino', destino);
-      formData.append('tempo_uso', tempoUso);
-      formData.append('estado', estado);
-      formData.append('tamanho', tamanho);
-      if (fotoRoupa) {
-        formData.append('foto', fotoRoupa);
-      }
-      const response = await fetch('http://localhost:3001/api/doacao', {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Accept': 'application/json',
-        },
-      });
-      const data = await response.json();
-      if (data.success) {
-        setToast({ message: 'Doação enviada para análise!', type: 'success' });
-        setTimeout(() => {
-          setToast(null);
-          router.push('/doacao-analise');
-        }, 1200);
-      } else {
-        setToast({ message: data.error || 'Erro ao enviar doação', type: 'error' });
-        setTimeout(() => setToast(null), 2000);
-      }
-    } catch (error) {
-      setToast({ message: 'Erro de conexão com o servidor.', type: 'error' });
-      setTimeout(() => setToast(null), 2000);
-    }
-  };
+                    const realizarDoacao = async () => {
+                      try {
+                        const idUsuario = await storage.getItem('idUsuario');
+                        if (!idUsuario) {
+                          setToast({ message: 'Usuário não identificado. Faça login novamente.', type: 'error' });
+                          setTimeout(() => setToast(null), 2000);
+                          return;
+                        }
+                        setToast({ message: 'Funcionalidade de doação pronta via modal de adicionar.', type: 'success' });
+                        setTimeout(() => setToast(null), 1200);
+                      } catch (e) {
+                        setToast({ message: 'Erro de conexão com o servidor.', type: 'error' });
+                        setTimeout(() => setToast(null), 2000);
+                      }
+                    };
 
-  return (
-    <View style={{ flex: 1, backgroundColor: '#F5F5F5' }}>
-      {toast ? <Toast message={toast.message} type={toast.type} /> : null}
-      {/* Header e botão de trevos personalizado */}
-      <View style={{ width: '100%', alignItems: 'center', marginTop: 32, marginBottom: 8 }}>
-        <TouchableOpacity
-          style={{
-            backgroundColor: 'linear-gradient(90deg, #43ea7a 0%, #2E7D32 100%)',
-            borderRadius: 28,
-            paddingVertical: 20,
-            paddingHorizontal: 38,
-            flexDirection: 'row',
-            alignItems: 'center',
-            shadowColor: '#2E7D32',
-            shadowRadius: 12,
-            shadowOffset: { width: 0, height: 4 },
-            borderColor: '#43ea7a',
-          }}
-          onPress={() => window.location.href = '/trevos'}
-        >
-          {/* Ícone de lista (substituído por imagem 'trevo.png') */}
-          <View style={{ marginRight: 18 }}>
-            <Image source={require('../../assets/images/trevo.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
-          </View>
-          {/* Número de trevos */}
-          <Text style={{ fontSize: 36, fontWeight: 'bold', color: '#fff', marginLeft: 6, textShadowColor: '#2E7D32', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 2 }}>{quantidadeTrevos}</Text>
-        </TouchableOpacity>
-      </View>
-      {/* Espaço entre botão e conteúdo */}
-      <View style={{ height: 18 }} />
-      <TrevoTroca quantidade={quantidadeTrevos} />
-      <ScrollView contentContainerStyle={styles.container}>
-        {/* Modal Inicial */}
-        <Modal visible={modalVisible} transparent animationType="fade">
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <TouchableOpacity style={styles.closeModal} onPress={() => setModalVisible(false)}>
-                <Text style={{ fontSize: 24 }}>&times;</Text>
-              </TouchableOpacity>
-              <Text style={styles.modalTitle}>Dados da Doação</Text>
-              <Text>Preencha os dados abaixo para realizar sua doação:</Text>
-            </View>
-          </View>
-        </Modal>
+                    return (
+                      <View style={{ flex: 1, backgroundColor: '#F5F5F5' }}>
+                        {toast ? <Toast message={toast.message} type={toast.type} /> : null}
+                        <View style={{ width: '100%', alignItems: 'center', marginTop: 32, marginBottom: 8 }}>
+                          <TouchableOpacity
+                            style={{
+                              backgroundColor: 'linear-gradient(90deg, #43ea7a 0%, #2E7D32 100%)',
+                              borderRadius: 28,
+                              paddingVertical: 20,
+                              paddingHorizontal: 38,
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              shadowColor: '#2E7D32',
+                              shadowRadius: 12,
+                              shadowOffset: { width: 0, height: 4 },
+                              borderColor: '#43ea7a',
+                            }}
+                            onPress={() => router.push('/trevos')}
+                          >
+                            <View style={{ marginRight: 18 }}>
+                              <Image source={require('../../assets/images/trevo.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
+                            </View>
+                            <Text style={{ fontSize: 36, fontWeight: 'bold', color: '#fff', marginLeft: 6, textShadowColor: '#2E7D32', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 2 }}>{quantidadeTrevos}</Text>
+                          </TouchableOpacity>
+                        </View>
 
-        {/* Top tabs (barra no topo da área de doações) */}
-        <View style={styles.topTabs}>
-          <TouchableOpacity
-            style={[styles.tabButton, activeTopTab === 'roupas' && styles.activeTab]}
-            onPress={() => setActiveTopTab('roupas')}
-          >
-            <Text style={[styles.tabText, activeTopTab === 'roupas' && { fontWeight: '700' }]}>Roupas</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tabButton, activeTopTab === 'minhas' && styles.activeTab]}
-            onPress={() => setActiveTopTab('minhas')}
-          >
-            <Text style={[styles.tabText, activeTopTab === 'minhas' && { fontWeight: '700' }]}>Minhas Doações</Text>
-          </TouchableOpacity>
-        </View>
+                        <View style={{ height: 18 }} />
+                        <TrevoTroca quantidade={quantidadeTrevos} />
 
-        {/* Cards centralizados abaixo do símbolo de trevo */}
-        <View style={styles.cardsRow}>
-          <View style={styles.card}>
-            <Image source={require('../../assets/images/camiseta.png')} style={styles.cardImage} />
-            <Text style={styles.cardTitle}>Camiseta</Text>
-          </View>
+                        <ScrollView contentContainerStyle={styles.container}>
+                          <Text style={styles.title}>doe sua roupa e ganhe trevos de troca</Text>
 
-          <TouchableOpacity style={[styles.card, styles.addCard]} onPress={() => setAddModalVisible(true)}>
-            <Text style={styles.plusText}>+</Text>
-            <Text style={styles.cardTitle}>Adicionar</Text>
-          </TouchableOpacity>
-        </View>
+                          {/* Centraliza um único card + card de adicionar ao lado */}
+                          <View style={[styles.cardsRow, { justifyContent: 'center', alignItems: 'center' }]}> 
+                            <View style={[styles.card, { marginRight: 12 }]}> 
+                              <Image source={require('../../assets/images/camiseta.png')} style={styles.cardImage} />
+                              {/* O usuário pediu que o card com ícone de camiseta não tenha nome */}
+                            </View>
 
-        {/* Modal para adicionar roupa */}
-        <Modal visible={addModalVisible} transparent animationType="slide">
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <TouchableOpacity style={styles.closeModal} onPress={() => setAddModalVisible(false)}>
-                <Text style={{ fontSize: 24 }}>&times;</Text>
-              </TouchableOpacity>
-              <Text style={styles.modalTitle}>Adicionar Roupa</Text>
-              <TextInput
-                placeholder="Nome da peça"
-                value={newNome}
-                onChangeText={setNewNome}
-                style={[styles.textArea, { height: 44, marginBottom: 8 }]}
-              />
-              {/* Input de arquivo: web usa input[file], nativo usa expo-image-picker */}
-              {Platform.OS === 'web' ? (
-                <>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e: any) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      const reader = new FileReader();
-                      reader.onload = () => {
-                        setNewImagem(reader.result as string);
-                      };
-                      reader.readAsDataURL(file);
-                    }}
-                    style={{ marginBottom: 8 }}
-                  />
-                  {newImagem ? (
-                    // preview web image (data URL)
-                    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                    // @ts-ignore
-                    <img src={newImagem} alt="preview" style={{ width: 120, height: 120, borderRadius: 12, marginBottom: 8, objectFit: 'cover' }} />
-                  ) : null}
-                </>
-              ) : (
-                <>
-                  <TouchableOpacity style={[styles.optionBtn, { width: '100%', marginBottom: 8 }]} onPress={pickImageForNew}>
-                    <Text style={{ color: '#145c2e', fontWeight: '700', textAlign: 'center' }}>Escolher imagem</Text>
-                  </TouchableOpacity>
-                  {newImagem ? <Image source={{ uri: newImagem }} style={{ width: 120, height: 120, borderRadius: 12, marginBottom: 8 }} /> : null}
-                </>
-              )}
-              <TextInput
-                placeholder="Descrição"
-                value={newDescricao}
-                onChangeText={setNewDescricao}
-                multiline
-                numberOfLines={3}
-                style={[styles.textArea, { height: 80, marginBottom: 12 }]}
-              />
-              <TouchableOpacity
-                style={[styles.optionBtn, { width: 160 }]}
-                onPress={() => {
-                  // validação simples
-                  if (!newNome || !newImagem) {
-                    setToast({ message: 'Preencha nome e imagem.', type: 'error' });
-                    setTimeout(() => setToast(null), 2000);
-                    return;
+                            <TouchableOpacity style={[styles.card, styles.addCard]} onPress={() => setAddModalVisible(true)}>
+                              <Text style={styles.plusText}>+</Text>
+                              <Text style={styles.cardTitle}>Adicionar</Text>
+                            </TouchableOpacity>
+                          </View>
+
+                          {/* Título e subtítulo explicando as outras opções de doações */}
+                          <View style={{ width: '100%', alignItems: 'center', marginTop: 8 }}>
+                            <Text style={styles.sectionTitle}>Outras opções de doações</Text>
+                            <Text style={styles.subtitle}>Doe roupas que você não usa mais — entregue para entidades, envie para bazares ou participe de trocas. Cada doação válida gera trevos de troca que você pode usar para adquirir outras peças.</Text>
+                          </View>
+
+                          <Modal visible={addModalVisible} transparent animationType="slide">
+                            <View style={styles.modalOverlay}>
+                              <View style={styles.modalContent}>
+                                <TouchableOpacity style={styles.closeModal} onPress={() => setAddModalVisible(false)}>
+                                  <Text style={{ fontSize: 24 }}>&times;</Text>
+                                </TouchableOpacity>
+                                <Text style={styles.modalTitle}>Adicionar Roupa</Text>
+                                <TextInput
+                                  placeholder="Nome da peça"
+                                  value={newNome}
+                                  onChangeText={setNewNome}
+                                  style={[styles.textArea, { height: 44, marginBottom: 8 }]}
+                                />
+                                {Platform.OS === 'web' ? (
+                                  <>
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      onChange={(e: any) => {
+                                        const file = e.target.files?.[0];
+                                        if (!file) return;
+                                        const reader = new FileReader();
+                                        reader.onload = () => {
+                                          setNewImagem(reader.result as string);
+                                        };
+                                        reader.readAsDataURL(file);
+                                      }}
+                                      style={{ marginBottom: 8 }}
+                                    />
+                                    {newImagem ? (
+                                      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                                      // @ts-ignore
+                                      <img src={newImagem} alt="preview" style={{ width: 120, height: 120, borderRadius: 12, marginBottom: 8, objectFit: 'cover' }} />
+                                    ) : null}
+                                  </>
+                                ) : (
+                                  <>
+                                    <TouchableOpacity style={[styles.optionBtn, { width: '100%', marginBottom: 8 }]} onPress={pickImageForNew}>
+                                      <Text style={{ color: '#145c2e', fontWeight: '700', textAlign: 'center' }}>Escolher imagem</Text>
+                                    </TouchableOpacity>
+                                    {newImagem ? <Image source={{ uri: newImagem }} style={{ width: 120, height: 120, borderRadius: 12, marginBottom: 8 }} /> : null}
+                                  </>
+                                )}
+                                <TextInput
+                                  placeholder="Descrição"
+                                  value={newDescricao}
+                                  onChangeText={setNewDescricao}
+                                  multiline
+                                  numberOfLines={3}
+                                  style={[styles.textArea, { height: 80, marginBottom: 12 }]}
+                                />
+                                <TouchableOpacity
+                                  style={[styles.optionBtn, { width: 160 }]}
+                                  onPress={async () => {
+                                    try {
+                                      if (!newNome || !newImagem) {
+                                        setToast({ message: 'Preencha nome e imagem.', type: 'error' });
+                                        setTimeout(() => setToast(null), 2000);
+                                        return;
+                                      }
+                                      if (Platform.OS === 'web' && typeof newImagem === 'string' && newImagem.startsWith('data:')) {
+                                        const payload = { nome: newNome, descricao: newDescricao, imagemBase64: newImagem };
+                                        const resp = await fetch('http://localhost:3001/api/admin-upload', {
+                                          method: 'POST',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify(payload),
+                                        });
+                                        const data = await resp.json();
+                                        if (resp.ok && data.success) {
+                                          setToast({ message: 'Imagem enviada para Administração!', type: 'success' });
+                                          setTimeout(() => setToast(null), 1400);
+                                          setAddModalVisible(false);
+                                          setNewNome('');
+                                          setNewImagem('');
+                                          setNewDescricao('');
+                                        } else {
+                                          setToast({ message: data.error || 'Erro ao enviar imagem', type: 'error' });
+                                          setTimeout(() => setToast(null), 2000);
+                                        }
+                                      } else {
+                                        const idUsuario = await storage.getItem('idUsuario') || '0';
+                                        const formData = new FormData();
+                                        formData.append('usuario_id', idUsuario as any);
+                                        formData.append('descricao', newDescricao || newNome);
+                                        formData.append('destino', 'bazar');
+                                        formData.append('tempo_uso', '0');
+                                        formData.append('estado', 'novo');
+                                        formData.append('tamanho', 'N/A');
+                                        const uri = newImagem as unknown as string;
+                                        const filename = uri.split('/').pop() || `photo.jpg`;
+                                        const match = filename.match(/\.([a-zA-Z0-9]+)$/);
+                                        const ext = match ? match[1].toLowerCase() : 'jpg';
+                                        const type = ext === 'png' ? 'image/png' : 'image/jpeg';
+                                        formData.append('foto', { uri, name: filename, type } as any);
+                                        const resp = await fetch('http://localhost:3001/api/doacao', {
+                                          method: 'POST',
+                                          body: formData,
+                                        });
+                                        const data = await resp.json();
+                                        if (resp.ok && data.success) {
+                                          setToast({ message: 'Imagem enviada para Administração!', type: 'success' });
+                                          setTimeout(() => setToast(null), 1400);
+                                          setAddModalVisible(false);
+                                          setNewNome('');
+                                          setNewImagem('');
+                                          setNewDescricao('');
+                                        } else {
+                                          setToast({ message: data.error || 'Erro ao enviar imagem', type: 'error' });
+                                          setTimeout(() => setToast(null), 2000);
+                                        }
+                                      }
+                                    } catch (e) {
+                                      setToast({ message: 'Erro ao enviar imagem.', type: 'error' });
+                                      setTimeout(() => setToast(null), 2000);
+                                    }
+                                  }}
+                                >
+                                  <Text style={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}>Enviar para Admin</Text>
+                                </TouchableOpacity>
+                              </View>
+                            </View>
+                          </Modal>
+
+                        </ScrollView>
+                      </View>
+                    );
                   }
-                  try {
-                    const key = 'produtos_custom';
-                    const existing = JSON.parse(localStorage.getItem(key) || '[]');
-                    const item = { nome: newNome, descricao: newDescricao, imagem: newImagem };
-                    existing.unshift(item);
-                    localStorage.setItem(key, JSON.stringify(existing));
-                    // dispatch storage event to notify other tabs/components
-                    try {
-                      window.dispatchEvent(new StorageEvent('storage', { key, newValue: JSON.stringify(existing) } as any));
-                    } catch (e) {
-                      // fallback: set and remove a flag
-                      localStorage.setItem('__last_produtos_update', Date.now().toString());
-                    }
-                    setToast({ message: 'Roupa adicionada ao Explore!', type: 'success' });
-                    setTimeout(() => setToast(null), 1400);
-                    setAddModalVisible(false);
-                    setNewNome('');
-                    setNewImagem('');
-                    setNewDescricao('');
-                  } catch (e) {
-                    setToast({ message: 'Erro ao adicionar roupa.', type: 'error' });
-                    setTimeout(() => setToast(null), 2000);
-                  }
-                }}
-              >
-                <Text style={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}>Adicionar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-
-        <Text style={styles.title}>Preencha os dados abaixo para realizar sua doação:</Text>
-        {/* Escolha do Local de Doação */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Selecione o destino da sua doação:</Text>
-          <View style={styles.optionsRow}>
-            {destinos.map((d, idx) => (
-              <TouchableOpacity
-                key={d.key}
-                style={[styles.destinoOption, destino === d.key && styles.selectedOption]}
-                activeOpacity={0.7}
-                onPress={() => setDestino(d.key)}
-              >
-                <View style={styles.destinoImgWrap}>
-                  <Image source={d.img} style={styles.destinoImg} resizeMode="contain" />
-                </View>
-                <Text style={styles.destinoText}>{d.nome}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Tempo de uso */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Tempo de uso:</Text>
-          <View style={styles.optionsRow}>
-            {tempoUsoOptions.map(opt => (
-              <TouchableOpacity
-                key={opt.value}
-                style={[styles.optionBtn, tempoUso === opt.value && styles.selectedOption]}
-                activeOpacity={0.7}
-                onPress={() => setTempoUso(opt.value)}
-              >
-                <Text style={{ color: '#145c2e', fontWeight: tempoUso === opt.value ? 'bold' : 'normal' }}>{opt.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Estado */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Estado da peça:</Text>
-          <View style={styles.optionsRow}>
-            {estadoOptions.map(opt => (
-              <TouchableOpacity
-                key={opt.value}
-                style={[styles.optionBtn, estado === opt.value && styles.selectedOption]}
-                activeOpacity={0.7}
-                onPress={() => setEstado(opt.value)}
-              >
-                <Text style={{ color: '#145c2e', fontWeight: estado === opt.value ? 'bold' : 'normal' }}>{opt.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Tamanho */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Tamanho da peça:</Text>
-          <View style={styles.optionsRow}>
-            {tamanhoOptions.map(opt => (
-              <TouchableOpacity
-                key={opt}
-                style={[styles.optionBtn, tamanho === opt && styles.selectedOption]}
-                activeOpacity={0.7}
-                onPress={() => setTamanho(opt)}
-              >
-                <Text style={{ color: '#145c2e', fontWeight: tamanho === opt ? 'bold' : 'normal' }}>{opt}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Foto da roupa (web) */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Foto da roupa:</Text>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={e => setFotoRoupa(e.target.files?.[0] || null)}
-            style={{ marginBottom: 8 }}
-          />
-          {fotoRoupa && (
-            <img
-              src={URL.createObjectURL(fotoRoupa)}
-              alt="Foto da roupa"
-              style={{ width: 120, height: 120, borderRadius: 12, marginBottom: 8, objectFit: 'cover' }}
-            />
-          )}
-        </View>
-        {/* Descrição */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Descrição do produto:</Text>
-          <TextInput
-            style={styles.textArea}
-            multiline
-            numberOfLines={4}
-            placeholder="Descrição do produto"
-            placeholderTextColor="#43ea7a"
-            value={descricao}
-            onChangeText={setDescricao}
-          />
-        </View>
-
-        <TouchableOpacity
-          style={{
-            backgroundColor: !destino || !tempoUso || !estado || !tamanho || !fotoRoupa ? '#b7e7c3' : 'linear-gradient(90deg, #43ea7a 0%, #2E7D32 100%)',
-            borderRadius: 18,
-            paddingVertical: 16,
-            paddingHorizontal: 32,
-            alignItems: 'center',
-            marginTop: 12,
-            elevation: 3,
-            shadowColor: '#2E7D32',
-            shadowOpacity: 0.12,
-            shadowRadius: 8,
-            shadowOffset: { width: 0, height: 2 },
-            opacity: !destino || !tempoUso || !estado || !tamanho || !fotoRoupa ? 0.6 : 1,
-          }}
-          activeOpacity={0.7}
-          onPress={realizarDoacao}
-          disabled={!destino || !tempoUso || !estado || !tamanho || !fotoRoupa}
-        >
-          <Text style={{
-            color: !destino || !tempoUso || !estado || !tamanho || !fotoRoupa ? '#145c2e' : '#fff',
-            fontWeight: 'bold',
-            fontSize: 18,
-            letterSpacing: 1,
-            textShadowColor: '#2E7D32',
-            textShadowOffset: {width: 1, height: 1},
-            textShadowRadius: 2,
-          }}>
-            REALIZAR DOAÇÃO
-          </Text>
-        </TouchableOpacity>
-
-        {/* Modal de Confirmação */}
-        <Modal visible={confirmModalVisible} transparent animationType="fade">
-          <View style={styles.modalOverlay}>
-            <View style={styles.confirmModalContent}>
-              <TouchableOpacity style={styles.closeModal} onPress={() => setConfirmModalVisible(false)}>
-                <Text style={{ fontSize: 24 }}>&times;</Text>
-              </TouchableOpacity>
-              <Text style={styles.modalTitle}>Doação Concluída!</Text>
-              <View style={{ alignItems: 'center', marginBottom: 15 }}>
-                <Text style={{ fontWeight: 'bold' }}>Local de Doação:</Text>
-                {selectedDestino && (
-                  <Image source={selectedDestino.img} style={styles.confirmImg} resizeMode="contain" />
-                )}
-                <Text>{selectedDestino ? selectedDestino.nome : 'Não informado'}</Text>
-              </View>
-              <Text><Text style={{ fontWeight: 'bold' }}>Tempo de uso:</Text> {tempoUsoOptions.find(o => o.value === tempoUso)?.label || 'Não informado'}</Text>
-              <Text><Text style={{ fontWeight: 'bold' }}>Estado da peça:</Text> {estadoOptions.find(o => o.value === estado)?.label || 'Não informado'}</Text>
-              <Text><Text style={{ fontWeight: 'bold' }}>Tamanho:</Text> {tamanho || 'Não informado'}</Text>
-              <Text><Text style={{ fontWeight: 'bold' }}>Descrição:</Text> {descricao || 'Nenhuma descrição fornecida'}</Text>
-              <Text><Text style={{ fontWeight: 'bold' }}>Destino:</Text> {selectedDestino ? selectedDestino.nome : 'Não informado'}</Text>
-            </View>
-          </View>
-        </Modal>
-
-        {/* Como funciona */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Como Funciona:</Text>
-          <Text>Saiba como sua doação ajuda as pessoas!</Text>
-          <Text>Escolha os dados da peça que deseja doar.</Text>
-          <Text>Preencha todas as informações corretamente.</Text>
-          <Text>Finalize sua doação e ajude!</Text>
-        </View>
-      </ScrollView>
-    </View>
-  );
-}

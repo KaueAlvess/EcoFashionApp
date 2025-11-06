@@ -7,8 +7,21 @@ const path = require('path');
 
 const app = express();
 app.use(cors());
-app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// increase default body size limits to allow large base64 images from web
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+// ensure uploads directory exists
+const fs = require('fs');
+const uploadsDir = path.join(__dirname, 'uploads');
+try {
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+    console.log('Criado diretório uploads');
+  }
+} catch (e) {
+  console.error('Não foi possível criar uploads dir:', e);
+}
+app.use('/uploads', express.static(uploadsDir));
 // Configuração do multer para upload de fotos
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -18,31 +31,115 @@ const storage = multer.diskStorage({
     cb(null, Date.now() + path.extname(file.originalname));
   }
 });
-const upload = multer({ storage: storage });
+// limit file size to 10MB by default to avoid huge uploads
+// limit file size to 50MB to allow larger uploads if necessary
+const upload = multer({ storage: storage, limits: { fileSize: 50 * 1024 * 1024 } });
 // Rota para registrar doação
-app.post('/api/doacao', upload.single('foto'), (req, res) => {
-  const { usuario_id, descricao, destino, tempo_uso, estado, tamanho } = req.body;
-  const foto = req.file ? req.file.filename : null;
-  if (!usuario_id || !descricao || !destino || !tempo_uso || !estado || !tamanho || !foto) {
-    return res.status(400).json({ error: 'Preencha todos os campos obrigatórios.' });
-  }
-  db.query(
-    'INSERT INTO doacoes (usuario_id, foto, descricao, destino, tempo_uso, estado, tamanho) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    [usuario_id, foto, descricao, destino, tempo_uso, estado, tamanho],
-    (err, result) => {
-      if (err) {
-        return res.status(500).json({ error: 'Erro ao registrar doação.' });
-      }
-      res.json({ success: true, id: result.insertId });
+app.post('/api/doacao', (req, res) => {
+  // use upload.single but handle errors explicitly
+  upload.single('foto')(req, res, function (err) {
+    if (err) {
+      console.error('Multer error:', err);
+      if (err.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'Arquivo muito grande.' });
+      return res.status(400).json({ error: 'Erro no upload do arquivo.' });
     }
-  );
+
+    try {
+      const { usuario_id, descricao, destino, tempo_uso, estado, tamanho } = req.body;
+      const foto = req.file ? req.file.filename : null;
+      if (!usuario_id || !descricao || !destino || !tempo_uso || !estado || !tamanho || !foto) {
+        return res.status(400).json({ error: 'Preencha todos os campos obrigatórios.' });
+      }
+      db.query(
+        'INSERT INTO doacoes (usuario_id, foto, descricao, destino, tempo_uso, estado, tamanho) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [usuario_id, foto, descricao, destino, tempo_uso, estado, tamanho],
+        (dbErr, result) => {
+          if (dbErr) {
+            console.error('DB error on insert doacoes:', dbErr);
+            return res.status(500).json({ error: 'Erro ao registrar doação.' });
+          }
+          res.json({ success: true, id: result.insertId });
+        }
+      );
+    } catch (e) {
+      console.error('Unexpected error in /api/doacao:', e);
+      return res.status(500).json({ error: 'Erro interno no servidor.' });
+    }
+  });
+});
+
+// Admin upload for web: accepts JSON with base64 image (data URL)
+app.post('/api/admin-upload', express.json({ limit: '50mb' }), (req, res) => {
+  try {
+    console.log('[admin-upload] incoming request from', req.ip || req.connection.remoteAddress);
+    const { nome, descricao, imagemBase64 } = req.body;
+    if (!nome || !imagemBase64) {
+      console.warn('[admin-upload] missing parameters:', { nome: !!nome, hasImage: !!imagemBase64 });
+      return res.status(400).json({ error: 'Parâmetros ausentes.' });
+    }
+
+    // log approximate payload size to help debugging
+    try {
+      const approxSize = Buffer.byteLength(imagemBase64 || '', 'utf8');
+      console.log(`[admin-upload] imagemBase64 size: ${approxSize} bytes`);
+      if (approxSize > 50 * 1024 * 1024) {
+        return res.status(413).json({ error: 'Imagem muito grande.' });
+      }
+    } catch (sizeErr) {
+      console.warn('[admin-upload] failed to compute payload size', sizeErr);
+    }
+
+    const matches = (imagemBase64 || '').match(/^data:(image\/\w+);base64,(.+)$/);
+    if (!matches) {
+      console.warn('[admin-upload] invalid image format');
+      return res.status(400).json({ error: 'Formato de imagem inválido.' });
+    }
+    const mime = matches[1];
+    const ext = mime.split('/')[1] || 'jpg';
+    const data = matches[2];
+    const buffer = Buffer.from(data, 'base64');
+    const filename = Date.now() + '.' + ext;
+    const filepath = path.join(__dirname, 'uploads', filename);
+    require('fs').writeFileSync(filepath, buffer);
+
+    // Insert into doacoes table with placeholders for required fields
+    const usuario_id = req.body.usuario_id || 0;
+    const destino = req.body.destino || 'bazar';
+    const tempo_uso = req.body.tempo_uso || '0';
+    const estado = req.body.estado || 'novo';
+    const tamanho = req.body.tamanho || 'N/A';
+    db.query('INSERT INTO doacoes (usuario_id, foto, descricao, destino, tempo_uso, estado, tamanho) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [usuario_id, filename, descricao || nome, destino, tempo_uso, estado, tamanho], (err, result) => {
+        if (err) {
+          console.error('[admin-upload] DB error on insert:', err);
+          return res.status(500).json({ error: 'Erro ao registrar doação.' });
+        }
+        console.log('[admin-upload] saved as', filename);
+        return res.json({ success: true, id: result.insertId, filename });
+      }
+    );
+  } catch (e) {
+    console.error('[admin-upload] unexpected error:', e);
+    return res.status(500).json({ error: 'Erro ao processar imagem.' });
+  }
+});
+
+// List doacoes (for admin panel)
+app.get('/api/doacoes', (req, res) => {
+  db.query('SELECT id, usuario_id, foto, descricao, destino, tempo_uso, estado, tamanho FROM doacoes ORDER BY id DESC', (err, results) => {
+    if (err) return res.status(500).json({ error: 'Erro ao buscar doações.' });
+    // map foto to full URL path
+    const host = req.protocol + '://' + req.get('host');
+    const rows = results.map(r => ({ ...r, fotoUrl: r.foto ? host + '/uploads/' + r.foto : null }));
+    res.json({ success: true, doacoes: rows });
+  });
 });
 
 const db = mysql.createConnection({
-  host: 'localhost',
-  user: 'root', // altere para seu usuário
-  password: 'root', // altere para sua senha
-  database: 'EcoFashion' // altere para o nome do seu banco
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root', // altere via env
+  password: process.env.DB_PASS || 'root', // altere via env
+  database: process.env.DB_NAME || 'EcoFashion' // altere via env
 });
 
 db.connect((err) => {
@@ -76,17 +173,18 @@ db.connect((err) => {
                 console.error('Erro ao buscar admin:', errAdmin);
                 return;
               }
-              const defaultEmail = 'admin@ecofashion.local';
-              const defaultPass = '123'; // admin password (plaintext) per user's request
+              const defaultEmail = process.env.DEFAULT_ADMIN_EMAIL || 'admin@ecofashion.local';
+              const defaultPass = process.env.DEFAULT_ADMIN_PASS || '123';
+              const defaultName = process.env.DEFAULT_ADMIN_NAME || 'admin';
               if (!adminResults || adminResults.length === 0) {
-                // Create default admin user with plaintext password
+                // Create default admin user with plaintext password (keeps previous demo behaviour)
                 db.query(
                   'INSERT INTO usuarios (nome, email, senha, foto, trevos, role) VALUES (?, ?, ?, ?, ?, ?) ',
-                  ['kaue', defaultEmail, defaultPass, null, 0, 'admin'],
+                  [defaultName, defaultEmail, defaultPass, null, 0, 'admin'],
                   (errInsert) => {
                     if (errInsert) {
                       if (errInsert.code === 'ER_DUP_ENTRY') {
-                        // If email exists, update role and senha
+                        // If email exists, update role and senha (store plaintext per demo)
                         db.query(
                           'UPDATE usuarios SET role = ?, senha = ? WHERE email = ?',
                           ['admin', defaultPass, defaultEmail],
@@ -104,10 +202,10 @@ db.connect((err) => {
                   }
                 );
               } else {
-                // Ensure existing admin has role 'admin' and the default password
+                // Ensure existing admin has role 'admin' and default plaintext password if needed
                 const existing = adminResults[0];
-                if (existing.role !== 'admin' || existing.senha !== defaultPass) {
-                  db.query('UPDATE usuarios SET role = ?, nome = ?, senha = ? WHERE id = ?', ['admin','kaue', defaultPass, existing.id], (errUpd2) => {
+                  if (existing.role !== 'admin' || existing.senha !== defaultPass) {
+                  db.query('UPDATE usuarios SET role = ?, nome = ?, senha = ? WHERE id = ?', ['admin', defaultName, defaultPass, existing.id], (errUpd2) => {
                     if (errUpd2) console.error('Erro ao ajustar role/senha do admin existente:', errUpd2);
                     else console.log('Role/senha do admin existente ajustada para admin/senha padrão.');
                   });
@@ -136,7 +234,7 @@ app.post('/api/admin-login', (req, res) => {
       if (err) return res.status(500).json({ error: 'Erro ao buscar usuário.' });
       if (results.length === 0) return res.status(401).json({ error: 'Administrador não encontrado.' });
       const usuario = results[0];
-      // Plain-text comparison for admin (per project/demo requirement)
+      // Plain-text comparison for admin (keeps demo behaviour)
       if (senha !== usuario.senha) return res.status(401).json({ error: 'Senha incorreta.' });
       res.json({ success: true, usuario: { id: usuario.id, nome: usuario.nome, email: usuario.email } });
     }
@@ -217,3 +315,6 @@ const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
+
+// Export DB for modular routers
+module.exports.db = db;

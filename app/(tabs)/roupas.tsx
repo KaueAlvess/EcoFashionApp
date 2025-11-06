@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActivityIndicator, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 
 const produtos = [
   {
@@ -64,7 +64,7 @@ const produtos = [
   },
 ];
 
-export default function ExploreScreen() {
+export default function RoupasScreen() {
   const [modalVisible, setModalVisible] = React.useState(false);
   const [produtoSelecionado, setProdutoSelecionado] = React.useState<{
     nome: string;
@@ -86,21 +86,25 @@ export default function ExploreScreen() {
   const [flowStage, setFlowStage] = React.useState<string | null>(null);
   const [address, setAddress] = React.useState({ rua: '', numero: '', cidade: '', cep: '' });
   const [loadingSeconds, setLoadingSeconds] = React.useState<number>(10);
-  const [solicitacoes, setSolicitacoes] = React.useState<Array<{ id: number; produto: any; status: string }>>(() => {
-    try {
-      const s = localStorage.getItem('solicitacoes');
-      return s ? JSON.parse(s) : [];
-    } catch (e) {
-      return [];
-    }
-  });
-  const [requestsModalVisible, setRequestsModalVisible] = React.useState(false);
 
   // Lista de produtos que combina os padrões com produtos adicionados pelo usuário
   const [listaProdutos, setListaProdutos] = React.useState(() => {
     try {
       const custom = JSON.parse(localStorage.getItem('produtos_custom') || '[]');
-      return [...custom, ...produtos];
+      // remove itens indesejados (p.ex. entradas de teste como 'dasd', 'KAUE', 'f wsf')
+      const unwanted = ['dasd', 'kaue', 'f wsf', 'a chave', 'o virus', 'personagem de branco'];
+      const filteredCustom = (custom || []).filter((p: any) => {
+        if (!p || !p.nome) return false;
+        const n = String(p.nome).trim().toLowerCase();
+        return !unwanted.includes(n);
+      });
+      // persist cleanup if we removed unwanted entries
+      try {
+        if (Array.isArray(custom) && filteredCustom.length !== custom.length) {
+          localStorage.setItem('produtos_custom', JSON.stringify(filteredCustom));
+        }
+      } catch (e) {}
+      return [...filteredCustom, ...produtos];
     } catch (e) {
       return produtos;
     }
@@ -112,7 +116,21 @@ export default function ExploreScreen() {
       if (ev.key === 'produtos_custom' || ev.key === '__last_produtos_update') {
         try {
           const custom = JSON.parse(localStorage.getItem('produtos_custom') || '[]');
-          setListaProdutos([...custom, ...produtos]);
+          const unwanted = ['dasd', 'kaue', 'f wsf', 'a chave', 'o virus', 'personagem de branco'];
+          const filteredCustom = (custom || []).filter((p: any) => {
+            if (!p || !p.nome) return false;
+            const n = String(p.nome).trim().toLowerCase();
+            return !unwanted.includes(n);
+          });
+          try {
+            // persist cleanup if unwanted entries were present
+            const raw = localStorage.getItem('produtos_custom') || '[]';
+            const original = JSON.parse(raw || '[]');
+            if (Array.isArray(original) && filteredCustom.length !== original.length) {
+              localStorage.setItem('produtos_custom', JSON.stringify(filteredCustom));
+            }
+          } catch (e) {}
+          setListaProdutos([...filteredCustom, ...produtos]);
         } catch (e) {
           setListaProdutos(produtos);
         }
@@ -222,9 +240,6 @@ export default function ExploreScreen() {
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.headerRow}>
         <Text style={styles.header}>ROUPAS DISPONIVEIS</Text>
-        <TouchableOpacity style={styles.requestsBtn} onPress={() => setRequestsModalVisible(true)}>
-          <Text style={styles.requestsBtnText}>Solicitações em analises</Text>
-        </TouchableOpacity>
       </View>
       <View style={styles.grid}>
         {listaProdutos.map((produto, idx) => (
@@ -316,39 +331,7 @@ export default function ExploreScreen() {
           </View>
         </View>
       </Modal>
-      {/* Modal de solicitações em análise */}
-      <Modal visible={requestsModalVisible} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <TouchableOpacity style={styles.closeModal} onPress={() => setRequestsModalVisible(false)}>
-              <Text style={{ fontSize: 24 }}>&times;</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Solicitações em análise</Text>
-            <ScrollView style={{ width: '100%', marginTop: 8 }}>
-              {solicitacoes.length === 0 && <Text>Nenhuma solicitação.</Text>}
-              {solicitacoes.map(s => (
-                <View key={s.id} style={styles.requestCard}>
-                  <Image source={{ uri: s.produto?.imagem }} style={styles.requestImg} />
-                  <View style={styles.requestInfo}>
-                    <Text style={{ fontWeight: 'bold' }}>{s.produto?.nome}</Text>
-                    <Text numberOfLines={2} style={{ color: '#386c3a' }}>{s.produto?.descricao}</Text>
-                  </View>
-                  <View style={{ alignItems: 'center' }}>
-                    {s.status === 'preparando' ? (
-                      <>
-                        <ActivityIndicator size="small" color="#2E7D32" />
-                        <Text style={styles.requestStatus}>preparando</Text>
-                      </>
-                    ) : (
-                      <Text style={styles.requestStatus}>pronto</Text>
-                    )}
-                  </View>
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+      {/* solicitações em análise removidas */}
     </ScrollView>
   );
 }
@@ -491,42 +474,5 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 12,
   },
-  requestsBtn: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#c6f7d0',
-  },
-  requestsBtnText: {
-    color: '#145c2e',
-    fontWeight: 'bold',
-  },
-  requestCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-    padding: 12,
-    backgroundColor: '#f7fff7',
-    borderRadius: 10,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#dff7df',
-  },
-  requestImg: {
-    width: 64,
-    height: 64,
-    borderRadius: 8,
-    marginRight: 12,
-    backgroundColor: '#eee',
-  },
-  requestInfo: {
-    flex: 1,
-  },
-  requestStatus: {
-    marginLeft: 8,
-    fontWeight: 'bold',
-    color: '#2E7D32',
-  },
+  /* requests UI removed per user request */
 });

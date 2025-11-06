@@ -1,3 +1,4 @@
+import storage from '@/utils/storage';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity } from 'react-native';
 
@@ -10,25 +11,33 @@ export default function TrevoTroca({ quantidade, onPress }: TrevoTrocaProps) {
   const [local, setLocal] = React.useState<number>(quantidade ?? 0);
 
   React.useEffect(() => {
-    // se quantidade foi passada via prop, use-a; caso contrário tente ler do localStorage
-    if (typeof quantidade === 'number') {
-      setLocal(quantidade);
-    } else {
-      try {
-        const t = localStorage.getItem('trevos');
-        setLocal(t ? parseInt(t, 10) : 0);
-      } catch (e) {
-        setLocal(0);
+    let mounted = true;
+    async function load() {
+      if (typeof quantidade === 'number') {
+        setLocal(quantidade);
+      } else {
+        try {
+          const t = await storage.getItem('trevos');
+          if (!mounted) return;
+          setLocal(t ? parseInt(t, 10) : 0);
+        } catch (e) {
+          if (!mounted) return;
+          setLocal(0);
+        }
       }
     }
+    load();
 
-    const handleStorage = (ev: StorageEvent) => {
-      if (ev.key === 'trevos') {
-        setLocal(ev.newValue ? parseInt(ev.newValue, 10) : 0);
+    const handle = (key: string, newValue: string | null) => {
+      if (key === 'trevos') {
+        setLocal(newValue ? parseInt(newValue, 10) : 0);
       }
     };
-    window.addEventListener('storage', handleStorage as any);
-    return () => window.removeEventListener('storage', handleStorage as any);
+    storage.addChangeListener(handle);
+    return () => {
+      mounted = false;
+      storage.removeChangeListener(handle);
+    };
   }, [quantidade]);
 
   return (

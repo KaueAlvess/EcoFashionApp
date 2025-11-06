@@ -1,18 +1,52 @@
+import storage from '@/utils/storage';
 import React from 'react';
-import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Toast from '../components/Toast';
 
 export default function AdministracaoScreen() {
   const [user, setUser] = React.useState('');
   const [pass, setPass] = React.useState('');
   const [toast, setToast] = React.useState<{ message: string; type?: 'success' | 'error' } | null>(null);
-  const [isAdmin, setIsAdmin] = React.useState<boolean>(() => {
-    try {
-      return localStorage.getItem('isAdminAuthenticated') === 'true';
-    } catch (e) {
-      return false;
+  const [isAdmin, setIsAdmin] = React.useState<boolean>(false);
+  const [doacoes, setDoacoes] = React.useState<Array<any>>([]);
+  const [loadingDoacoes, setLoadingDoacoes] = React.useState(false);
+
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const v = await storage.getItem('isAdminAuthenticated');
+        if (!mounted) return;
+        setIsAdmin(v === 'true');
+      } catch (e) {
+        // ignore
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  // fetch doacoes when admin view active
+  React.useEffect(() => {
+    let mounted = true;
+    async function load() {
+      if (!isAdmin) return;
+      setLoadingDoacoes(true);
+      try {
+        const resp = await fetch('http://localhost:3001/api/doacoes');
+        const data = await resp.json();
+        if (resp.ok && data.success) {
+          if (!mounted) return;
+          setDoacoes(data.doacoes || []);
+        }
+      } catch (e) {
+        // ignore
+      } finally {
+        if (mounted) setLoadingDoacoes(false);
+      }
     }
-  });
+    load();
+    return () => { mounted = false; };
+  }, [isAdmin]);
 
   const handleLogin = () => {
     // Authenticate against backend admin endpoint
@@ -30,7 +64,7 @@ export default function AdministracaoScreen() {
         });
         const data = await resp.json();
         if (resp.ok && data.success) {
-          try { localStorage.setItem('isAdminAuthenticated', 'true'); } catch (e) {}
+          try { await storage.setItem('isAdminAuthenticated', 'true'); } catch (e) {}
           setIsAdmin(true);
           setUser('');
           setPass('');
@@ -48,10 +82,10 @@ export default function AdministracaoScreen() {
   };
 
   const handleLogout = () => {
-    try {
-      localStorage.removeItem('isAdminAuthenticated');
-    } catch (e) {}
-    setIsAdmin(false);
+    (async () => {
+      try { await storage.removeItem('isAdminAuthenticated'); } catch (e) {}
+      setIsAdmin(false);
+    })();
   };
 
   if (!isAdmin) {
@@ -98,13 +132,35 @@ export default function AdministracaoScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Administração — Painel</Text>
-      <Text style={{ marginBottom: 12 }}>Área restrita: apenas administradores podem acessar.</Text>
-      <Text style={{ fontWeight: 'bold', marginBottom: 18 }}>Análises de doações (em breve)</Text>
-      <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-        <Text style={styles.logoutBtnText}>Sair</Text>
-      </TouchableOpacity>
+    <View style={{ flex: 1, backgroundColor: '#F5F5F5' }}>
+      <View style={styles.container}>
+        <Text style={styles.title}>Administração — Painel</Text>
+        <Text style={{ marginBottom: 12 }}>Área restrita: apenas administradores podem acessar.</Text>
+        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+          <Text style={styles.logoutBtnText}>Sair</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={{ flex: 1, padding: 12 }}>
+        {loadingDoacoes ? (
+          <ActivityIndicator size="large" color="#2E7D32" />
+        ) : (
+          <ScrollView contentContainerStyle={{ padding: 8 }}>
+            {doacoes.length === 0 && <Text>Nenhuma doação encontrada.</Text>}
+            {doacoes.map((d) => (
+              <View key={d.id} style={{ backgroundColor: '#fff', padding: 12, borderRadius: 12, marginBottom: 12, alignItems: 'center' }}>
+                {d.fotoUrl ? (
+                  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                  // @ts-ignore
+                  <Image source={{ uri: d.fotoUrl }} style={{ width: 220, height: 160, borderRadius: 8, marginBottom: 8 }} />
+                ) : null}
+                <Text style={{ fontWeight: 'bold' }}>{d.descricao || 'Sem descrição'}</Text>
+                <Text style={{ color: '#666' }}>Destino: {d.destino}</Text>
+                <Text style={{ color: '#666' }}>Estado: {d.estado}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        )}
+      </View>
     </View>
   );
 }

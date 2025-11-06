@@ -77,7 +77,7 @@ export default function PerfilScreen() {
       {/* Texto de incentivo */}
       <Text style={styles.incentivo}>Doe e ganhe trevos de doação</Text>
       {/* Botão para explorar produtos */}
-      <TouchableOpacity style={styles.exploreBtn} onPress={() => router.push('/explore')}>
+      <TouchableOpacity style={styles.exploreBtn} onPress={() => router.push('/roupas')}>
         <Text style={styles.exploreBtnText}>Ir para Produtos</Text>
       </TouchableOpacity>
       {/* Produtos */}

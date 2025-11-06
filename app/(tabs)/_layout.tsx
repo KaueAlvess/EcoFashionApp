@@ -43,10 +43,19 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="roupas"
+        options={{
+          title: 'Roupas',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="magnifyingglass" color={color} />,
+        }}
+      />
+      {/* Keep a hidden entry for legacy /explore route so it doesn't show in the tab bar
+          if the file still exists on disk (tooling may take a restart to regenerate routes). */}
+      <Tabs.Screen
         name="explore"
         options={{
           title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="magnifyingglass" color={color} />,
+          tabBarButton: () => null,
         }}
       />
       <Tabs.Screen
@@ -70,6 +79,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="lock.fill" color={color} />,
         }}
       />
+      
       </Tabs>
   );
 }

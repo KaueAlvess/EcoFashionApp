@@ -29,7 +29,7 @@ export default function LoginScreen() { // Renomeado para LoginScreen
         setToast({ message: 'Login realizado com sucesso!', type: 'success' });
         setTimeout(() => {
           setToast(null);
-          router.push('/explore');
+          router.push('/roupas');
         }, 1200);
       } else {
         setToast({ message: data.error || 'Email ou senha incorretos.', type: 'error' });
