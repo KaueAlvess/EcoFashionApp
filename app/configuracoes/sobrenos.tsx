@@ -68,8 +68,10 @@ export default function SobreNosScreen() {
             </View>
           </View>
         </View>
+        {/* Feedbacks moved to the main Configurações screen */}
         <Text style={styles.footer}>&copy; EcoFashion - Moda Sustentável</Text>
       </ScrollView>
+      
     </View>
   );
 }
@@ -174,4 +176,5 @@ const styles = StyleSheet.create({
     color: '#888',
     textAlign: 'center',
   },
+  
 });

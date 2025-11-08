@@ -1,6 +1,7 @@
 import storage from '@/utils/storage';
+import { useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, ImageBackground, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Toast from '../components/Toast';
 
 export default function AdministracaoScreen() {
@@ -10,6 +11,19 @@ export default function AdministracaoScreen() {
   const [isAdmin, setIsAdmin] = React.useState<boolean>(false);
   const [doacoes, setDoacoes] = React.useState<Array<any>>([]);
   const [loadingDoacoes, setLoadingDoacoes] = React.useState(false);
+  const [feedbacks, setFeedbacks] = React.useState<Array<any>>([]);
+  const [loadingFeedbacks, setLoadingFeedbacks] = React.useState(false);
+  const [produtosAdmin, setProdutosAdmin] = React.useState<Array<any>>([]);
+  const [loadingProdutos, setLoadingProdutos] = React.useState(false);
+  const [editModalVisible, setEditModalVisible] = React.useState(false);
+  const [editItem, setEditItem] = React.useState<any | null>(null);
+  const [editNome, setEditNome] = React.useState('');
+  const [editDescricao, setEditDescricao] = React.useState('');
+  const [editImagem, setEditImagem] = React.useState('');
+  const [showRemoved, setShowRemoved] = React.useState(false);
+  const [removedItems, setRemovedItems] = React.useState<Array<any>>([]);
+  const router = useRouter();
+  const [selectedSection, setSelectedSection] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     let mounted = true;
@@ -48,6 +62,156 @@ export default function AdministracaoScreen() {
     return () => { mounted = false; };
   }, [isAdmin]);
 
+  // load feedbacks from localStorage when admin opens feedbacks section
+  React.useEffect(() => {
+    let mounted = true;
+    async function loadFeedbacks() {
+      if (!isAdmin) return;
+      if (selectedSection !== 'feedbacks') return;
+      setLoadingFeedbacks(true);
+      try {
+        const raw = localStorage.getItem('feedbacks') || '[]';
+        const arr = JSON.parse(raw || '[]');
+        if (!mounted) return;
+        setFeedbacks(Array.isArray(arr) ? arr : []);
+      } catch (e) {
+        if (mounted) setFeedbacks([]);
+      } finally {
+        if (mounted) setLoadingFeedbacks(false);
+      }
+    }
+    loadFeedbacks();
+    return () => { mounted = false; };
+  }, [isAdmin, selectedSection]);
+
+  // load products for admin management
+  React.useEffect(() => {
+    let mounted = true;
+    async function loadProdutos() {
+      if (!isAdmin) return;
+      if (selectedSection !== 'roupas') return;
+      setLoadingProdutos(true);
+      try {
+        const custom = JSON.parse(localStorage.getItem('produtos_custom') || '[]');
+        const base = JSON.parse(localStorage.getItem('produtos_base') || '[]') || [];
+        const overrides = JSON.parse(localStorage.getItem('produtos_overrides') || '{}') || {};
+        const removed = JSON.parse(localStorage.getItem('produtos_removed') || '[]') || [];
+        const cleanedCustom = Array.isArray(custom) ? custom : [];
+        // mark custom items
+        const customMarked = cleanedCustom.map((c:any) => ({ ...c, __source: 'custom' }));
+        const baseWithOverrides = (Array.isArray(base) ? base : []).map((b:any) => {
+          const key = String(b.nome || '').trim();
+          const overridden = overrides && overrides[key] ? { ...b, ...overrides[key] } : b;
+          return { ...overridden, __source: 'base' };
+        }).filter((b:any) => !removed.includes(String(b.nome || '').trim()));
+        const combined = [...customMarked.filter((c:any) => !removed.includes(String(c.nome||'').trim())), ...baseWithOverrides];
+        if (!mounted) return;
+        setProdutosAdmin(combined);
+      } catch (e) {
+        if (mounted) setProdutosAdmin([]);
+      } finally {
+        if (mounted) setLoadingProdutos(false);
+      }
+    }
+    loadProdutos();
+    return () => { mounted = false; };
+  }, [isAdmin, selectedSection]);
+
+  const reloadAdminProdutos = () => {
+    // trigger reload by toggling selectedSection (quick hack) or just call load effect by setting state
+    setTimeout(() => {
+      try {
+        const ev = new StorageEvent('storage', { key: 'produtos_custom', newValue: localStorage.getItem('produtos_custom') } as any);
+        window.dispatchEvent(ev as any);
+      } catch (e) {}
+    }, 80);
+  };
+
+  const loadRemovedItems = () => {
+    try {
+      const removedNames = JSON.parse(localStorage.getItem('produtos_removed') || '[]') || [];
+      const custom = JSON.parse(localStorage.getItem('produtos_custom') || '[]') || [];
+      const base = JSON.parse(localStorage.getItem('produtos_base') || '[]') || [];
+      const list: any[] = [];
+      removedNames.forEach((name: string) => {
+        const fromCustom = (custom || []).find((c: any) => String(c.nome || '') === String(name));
+        if (fromCustom) {
+          list.push({ ...fromCustom, __source: 'custom' });
+          return;
+        }
+        const fromBase = (base || []).find((b: any) => String(b.nome || '') === String(name));
+        if (fromBase) list.push({ ...fromBase, __source: 'base' });
+      });
+      setRemovedItems(list);
+    } catch (e) {
+      setRemovedItems([]);
+    }
+  };
+
+  const handleRestoreProduct = (nome: string) => {
+    try {
+      const removed = JSON.parse(localStorage.getItem('produtos_removed') || '[]') || [];
+      const updated = (Array.isArray(removed) ? removed : []).filter((n: string) => String(n) !== String(nome));
+      localStorage.setItem('produtos_removed', JSON.stringify(updated));
+      setToast({ message: 'Produto restaurado para usuários', type: 'success' });
+      setTimeout(() => setToast(null), 1400);
+      loadRemovedItems();
+      reloadAdminProdutos();
+      try { window.dispatchEvent(new StorageEvent('storage', { key: 'produtos_removed', newValue: JSON.stringify(updated) } as any)); } catch (e) {}
+    } catch (e) {
+      setToast({ message: 'Erro ao restaurar produto', type: 'error' });
+      setTimeout(() => setToast(null), 1400);
+    }
+  };
+
+  const handleTirarProduto = (nome: string) => {
+    try {
+      const removed = JSON.parse(localStorage.getItem('produtos_removed') || '[]');
+      const arr = Array.isArray(removed) ? removed : [];
+      if (!arr.includes(nome)) arr.push(nome);
+      localStorage.setItem('produtos_removed', JSON.stringify(arr));
+      setToast({ message: 'Produto removido da visualização do usuário', type: 'success' });
+      setTimeout(() => setToast(null), 1400);
+      reloadAdminProdutos();
+      try { window.dispatchEvent(new StorageEvent('storage', { key: 'produtos_removed', newValue: JSON.stringify(arr) } as any)); } catch (e) {}
+    } catch (e) {
+      setToast({ message: 'Erro ao remover produto', type: 'error' });
+      setTimeout(() => setToast(null), 1400);
+    }
+  };
+
+  const openEditProduto = (item: any) => {
+    setEditItem(item);
+    setEditNome(item.nome || '');
+    setEditDescricao(item.descricao || '');
+    setEditImagem(item.imagem || '');
+    setEditModalVisible(true);
+  };
+
+  const saveEditProduto = () => {
+    if (!editItem) return;
+    const key = String(editItem.nome || '').trim();
+    try {
+      if (editItem.__source === 'custom') {
+        const custom = JSON.parse(localStorage.getItem('produtos_custom') || '[]') || [];
+        const updated = (Array.isArray(custom) ? custom : []).map((c:any) => (String(c.nome||'') === String(editItem.nome||'') ? { ...c, nome: editNome, descricao: editDescricao, imagem: editImagem } : c));
+        localStorage.setItem('produtos_custom', JSON.stringify(updated));
+      } else {
+        const overrides = JSON.parse(localStorage.getItem('produtos_overrides') || '{}') || {};
+        overrides[key] = { nome: editNome, descricao: editDescricao, imagem: editImagem };
+        localStorage.setItem('produtos_overrides', JSON.stringify(overrides));
+      }
+      setToast({ message: 'Produto atualizado', type: 'success' });
+      setTimeout(() => setToast(null), 1200);
+      setEditModalVisible(false);
+      reloadAdminProdutos();
+      try { window.dispatchEvent(new StorageEvent('storage', { key: 'produtos_overrides', newValue: localStorage.getItem('produtos_overrides') } as any)); } catch (e) {}
+    } catch (e) {
+      setToast({ message: 'Erro ao atualizar produto', type: 'error' });
+      setTimeout(() => setToast(null), 1400);
+    }
+  };
+
   const handleLogin = () => {
     // Authenticate against backend admin endpoint
     (async () => {
@@ -85,6 +249,7 @@ export default function AdministracaoScreen() {
     (async () => {
       try { await storage.removeItem('isAdminAuthenticated'); } catch (e) {}
       setIsAdmin(false);
+      try { router.replace('/'); } catch (e) {}
     })();
   };
 
@@ -102,6 +267,21 @@ export default function AdministracaoScreen() {
       setToast({ message: 'Erro de conexão', type: 'error' });
     }
     setTimeout(() => setToast(null), 1600);
+  };
+
+  const handleRemoveFeedback = (id: number) => {
+    try {
+      const raw = localStorage.getItem('feedbacks') || '[]';
+      const arr = JSON.parse(raw || '[]');
+      const updated = (Array.isArray(arr) ? arr : []).filter((f: any) => f.id !== id);
+      localStorage.setItem('feedbacks', JSON.stringify(updated));
+      setFeedbacks(updated);
+      setToast({ message: 'Feedback removido', type: 'success' });
+      setTimeout(() => setToast(null), 1400);
+    } catch (e) {
+      setToast({ message: 'Erro ao remover feedback', type: 'error' });
+      setTimeout(() => setToast(null), 1400);
+    }
   };
 
   if (!isAdmin) {
@@ -147,37 +327,170 @@ export default function AdministracaoScreen() {
     );
   }
 
+  const renderDoacoesList = () => (
+    loadingDoacoes ? (
+      <ActivityIndicator size="large" color="#2E7D32" />
+    ) : (
+      <ScrollView contentContainerStyle={{ padding: 8 }}>
+        {doacoes.length === 0 && <Text>Nenhuma doação encontrada.</Text>}
+        {doacoes.map((d) => (
+          <View key={d.id} style={styles.doacaoCard}>
+            {d.fotoUrl ? (
+              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+              // @ts-ignore
+              <Image source={{ uri: d.fotoUrl }} style={styles.doacaoImage} />
+            ) : null}
+            <Text style={styles.doacaoTitle}>{d.descricao || 'Sem descrição'}</Text>
+            <Text style={styles.doacaoMeta}>Destino: {d.destino}</Text>
+            <Text style={styles.doacaoMeta}>Estado: {d.estado}</Text>
+            <TouchableOpacity style={styles.removeBtn} onPress={() => handleRemove(d.id)}>
+              <Text style={{ color: '#fff', fontWeight: '700' }}>Remover</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
+      </ScrollView>
+    )
+  );
+
   return (
     <View style={{ flex: 1, backgroundColor: '#F5F5F5' }}>
-      <View style={styles.container}>
-        <Text style={styles.title}>Administração — Painel</Text>
-        <Text style={{ marginBottom: 12 }}>Área restrita: apenas administradores podem acessar.</Text>
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-          <Text style={styles.logoutBtnText}>Sair</Text>
-        </TouchableOpacity>
-      </View>
+      <ImageBackground source={require('../assets/images/trevo.png')} style={styles.adminHeaderBg} imageStyle={{ opacity: 0.06, resizeMode: 'cover' }}>
+        <View style={styles.adminHeaderContent}>
+          <Image source={require('../assets/images/logo.png')} style={styles.adminLogo} resizeMode="contain" />
+          <View style={{ flex: 1, marginLeft: 12, alignItems: 'center' }}>
+            <Text style={styles.adminTitle}>Área de Administrador</Text>
+            <Text style={styles.adminSubtitle}>Controle rápido das roupas, feedbacks e solicitações.</Text>
+          </View>
+          <TouchableOpacity style={styles.logoutBtnHeader} onPress={handleLogout} accessibilityLabel="Sair do painel">
+            <Text style={styles.logoutBtnText}>Sair</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.adminButtonsRow}>
+          <TouchableOpacity style={[styles.adminBtn, selectedSection === 'roupas' ? styles.adminBtnActive : null]} onPress={() => setSelectedSection('roupas')}>
+            <Text style={[styles.adminBtnText, selectedSection === 'roupas' ? styles.adminBtnTextActive : null]}>👗 Gerenciar Roupas</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.adminBtn, selectedSection === 'feedbacks' ? styles.adminBtnActive : null]} onPress={() => setSelectedSection('feedbacks')}>
+            <Text style={[styles.adminBtnText, selectedSection === 'feedbacks' ? styles.adminBtnTextActive : null]}>💬 Feedbacks</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.adminBtn, selectedSection === 'solicitacoes' ? styles.adminBtnActive : null]} onPress={() => setSelectedSection('solicitacoes')}>
+            <Text style={[styles.adminBtnText, selectedSection === 'solicitacoes' ? styles.adminBtnTextActive : null]}>📦 Solicitações</Text>
+          </TouchableOpacity>
+        </View>
+      </ImageBackground>
+
       <View style={{ flex: 1, padding: 12 }}>
-        {loadingDoacoes ? (
-          <ActivityIndicator size="large" color="#2E7D32" />
-        ) : (
-          <ScrollView contentContainerStyle={{ padding: 8 }}>
-            {doacoes.length === 0 && <Text>Nenhuma doação encontrada.</Text>}
-            {doacoes.map((d) => (
-              <View key={d.id} style={{ backgroundColor: '#fff', padding: 12, borderRadius: 12, marginBottom: 12, alignItems: 'center' }}>
-                {d.fotoUrl ? (
-                  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                  // @ts-ignore
-                  <Image source={{ uri: d.fotoUrl }} style={{ width: 220, height: 160, borderRadius: 8, marginBottom: 8 }} />
+        {selectedSection === null && (
+          <View style={styles.sectionPlaceholder}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#2E7D32', marginBottom: 6 }}>Bem-vindo ao painel</Text>
+            <Text style={{ color: '#356b3a', textAlign: 'center' }}>Selecione uma das opções acima para gerenciar conteúdos. Estas áreas foram preparadas e estarão prontas para atualizações futuras.</Text>
+          </View>
+        )}
+
+        {selectedSection === 'roupas' && (
+          <View style={{ flex: 1 }}>
+            {loadingProdutos ? (
+              <ActivityIndicator size="large" color="#2E7D32" />
+            ) : (
+              <ScrollView contentContainerStyle={{ padding: 8 }}>
+                {produtosAdmin.length === 0 && <Text style={{ textAlign: 'center', color: '#666' }}>Nenhuma peça encontrada.</Text>}
+                {produtosAdmin.map((p) => (
+                  <View key={p.nome} style={styles.prodCard}>
+                    <Image source={{ uri: p.imagem }} style={styles.prodImage} />
+                    <View style={styles.prodInfo}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Text style={styles.prodTitle} numberOfLines={1}>{p.nome}</Text>
+                        <View style={[styles.badge, p.__source === 'custom' ? styles.badgeCustom : styles.badgeBase]}>
+                          <Text style={p.__source === 'custom' ? styles.badgeTextCustom : styles.badgeTextBase}>
+                            {p.__source === 'custom' ? '✳️ Personalizada' : '📦 Original'}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={styles.prodDesc} numberOfLines={3}>{p.descricao}</Text>
+                      <View style={styles.actionRow}>
+                        <TouchableOpacity activeOpacity={0.8} style={[styles.actionBtn, { backgroundColor: '#B71C1C' }]} onPress={() => handleTirarProduto(p.nome)}>
+                          <Text style={styles.actionBtnText}>🗑️ Tirar</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity activeOpacity={0.8} style={[styles.actionBtn, { backgroundColor: '#2E7D32' }]} onPress={() => openEditProduto(p)}>
+                          <Text style={styles.actionBtnText}>✏️ Editar</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+                ))}
+                <View style={{ alignItems: 'center', marginTop: 12 }}>
+                  <TouchableOpacity style={[styles.removeBtn, { backgroundColor: '#B71C1C', paddingHorizontal: 20 }]} onPress={() => { setShowRemoved(s => !s); if (!showRemoved) loadRemovedItems(); }}>
+                    <Text style={{ color: '#fff', fontWeight: '800' }}>{showRemoved ? 'Fechar Lixeira' : 'Abrir Lixeira'}</Text>
+                  </TouchableOpacity>
+                </View>
+                {showRemoved ? (
+                  <View style={styles.trashPanel}>
+                    <Text style={styles.trashTitle}>Lixeira — peças removidas</Text>
+                    {removedItems.length === 0 ? (
+                      <View style={styles.emptyTrash}><Text style={{ color: '#666' }}>Nenhuma peça na lixeira.</Text></View>
+                    ) : (
+                      <ScrollView contentContainerStyle={{ padding: 8 }} style={{ maxHeight: 300 }}>
+                        {removedItems.map((r) => (
+                          <View key={r.nome} style={styles.removedCard}>
+                            <Image source={{ uri: r.imagem }} style={styles.removedImage} />
+                            <View style={{ flex: 1, marginLeft: 12 }}>
+                              <Text style={styles.prodTitle} numberOfLines={1}>{r.nome}</Text>
+                              <Text style={styles.prodDesc} numberOfLines={2}>{r.descricao}</Text>
+                              <TouchableOpacity activeOpacity={0.85} style={[styles.restoreBtn]} onPress={() => handleRestoreProduct(r.nome)}>
+                                <Text style={{ color: '#fff', fontWeight: '800' }}>♻️ Restaurar</Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        ))}
+                      </ScrollView>
+                    )}
+                  </View>
                 ) : null}
-                <Text style={{ fontWeight: 'bold' }}>{d.descricao || 'Sem descrição'}</Text>
-                <Text style={{ color: '#666' }}>Destino: {d.destino}</Text>
-                <Text style={{ color: '#666' }}>Estado: {d.estado}</Text>
-                <TouchableOpacity style={{ marginTop: 8, backgroundColor: '#B71C1C', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }} onPress={() => handleRemove(d.id)}>
-                  <Text style={{ color: '#fff', fontWeight: '700' }}>Remover</Text>
-                </TouchableOpacity>
+              </ScrollView>
+            )}
+            <Modal visible={editModalVisible} transparent animationType="fade">
+              <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.32)', justifyContent: 'center', alignItems: 'center' }}>
+                <View style={{ width: '92%', maxWidth: 720, backgroundColor: '#fff', borderRadius: 12, padding: 16 }}>
+                  <Text style={{ fontSize: 18, fontWeight: '800', color: '#2E7D32', marginBottom: 8, textAlign: 'center' }}>Editar Produto</Text>
+                  <TextInput style={styles.input} value={editNome} onChangeText={setEditNome} placeholder="Nome" />
+                  <TextInput style={[styles.input, { minHeight: 80 }]} value={editDescricao} onChangeText={setEditDescricao} placeholder="Descrição" multiline />
+                  <TextInput style={styles.input} value={editImagem} onChangeText={setEditImagem} placeholder="URL da imagem" />
+                  <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'center' }}>
+                    <TouchableOpacity style={styles.modalBtn} onPress={() => setEditModalVisible(false)}>
+                      <Text style={styles.modalBtnText}>Cancelar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.modalBtn, styles.modalBtnPrimary]} onPress={saveEditProduto}>
+                      <Text style={[styles.modalBtnText, { color: '#fff' }]}>Salvar</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               </View>
-            ))}
-          </ScrollView>
+            </Modal>
+          </View>
+        )}
+
+        {selectedSection === 'feedbacks' && (
+          <View style={{ flex: 1 }}>
+            {loadingFeedbacks ? (
+              <ActivityIndicator size="large" color="#2E7D32" />
+            ) : (
+              <ScrollView contentContainerStyle={{ padding: 8 }}>
+                {feedbacks.length === 0 && <Text>Nenhum feedback encontrado.</Text>}
+                {feedbacks.map((f) => (
+                  <View key={f.id} style={styles.doacaoCard}>
+                    <Text style={styles.doacaoTitle}>{f.message}</Text>
+                    <Text style={styles.doacaoMeta}>{new Date(f.createdAt).toLocaleString()}</Text>
+                    <TouchableOpacity style={styles.removeBtn} onPress={() => handleRemoveFeedback(f.id)}>
+                      <Text style={{ color: '#fff', fontWeight: '700' }}>Remover</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        )}
+
+        {selectedSection === 'solicitacoes' && (
+          <View style={{ flex: 1 }}>{renderDoacoesList()}</View>
         )}
       </View>
     </View>
@@ -285,4 +598,50 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, fontWeight: 'bold', color: '#2E7D32', marginBottom: 8 },
   logoutBtn: { backgroundColor: '#C62828', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12 },
   logoutBtnText: { color: '#fff', fontWeight: 'bold' },
+  /* Admin enhanced styles */
+  adminHeader: { alignItems: 'center', paddingVertical: 20, paddingHorizontal: 12, backgroundColor: '#eaf7ef', borderBottomWidth: 1, borderColor: '#e0f1e4' },
+  adminLogo: { width: 88, height: 88, marginBottom: 8 },
+  adminTitle: { fontSize: 26, fontWeight: '900', color: '#145c2e', marginBottom: 6, textAlign: 'center' },
+  adminSubtitle: { color: '#356b3a', textAlign: 'center', maxWidth: 760, marginBottom: 12 },
+  adminButtonsRow: { flexDirection: 'row', gap: 10, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 12 },
+  adminBtn: { backgroundColor: '#2E7D32', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, marginHorizontal: 6, marginVertical: 6 },
+  adminBtnText: { color: '#fff', fontWeight: '700' },
+  adminHeaderBg: { backgroundColor: '#eaf7ef', paddingVertical: 18, paddingHorizontal: 12 },
+  adminHeaderContent: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
+  logoutBtnHeader: { backgroundColor: '#C62828', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, elevation: 2 },
+  adminBtnActive: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#2E7D32' },
+  adminBtnTextActive: { color: '#2E7D32', fontWeight: '900' },
+  sectionPlaceholder: { backgroundColor: '#fff', borderRadius: 12, padding: 16, alignItems: 'center', elevation: 2 },
+  sectionTitle: { fontSize: 18, fontWeight: '800', color: '#2E7D32', marginBottom: 6 },
+  sectionSubtitle: { color: '#356b3a', textAlign: 'center' },
+  doacaoCard: { backgroundColor: '#fff', padding: 12, borderRadius: 12, marginBottom: 12, alignItems: 'center' },
+  doacaoImage: { width: 220, height: 160, borderRadius: 8, marginBottom: 8 },
+  doacaoTitle: { fontWeight: 'bold', color: '#1f4f2a', marginBottom: 4 },
+  doacaoMeta: { color: '#666' },
+  removeBtn: { marginTop: 8, backgroundColor: '#B71C1C', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
+  /* Novos estilos para painel de produtos/admin */
+  prodCard: { backgroundColor: '#fff', padding: 12, borderRadius: 12, marginBottom: 12, flexDirection: 'row', alignItems: 'flex-start', elevation: 3, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 3 } },
+  prodImage: { width: 120, height: 120, borderRadius: 10, backgroundColor: '#f2f2f2' },
+  prodInfo: { flex: 1, marginLeft: 12 },
+  prodTitle: { fontSize: 16, fontWeight: '800', color: '#134f2a' },
+  prodDesc: { color: '#666', marginTop: 6 },
+  badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  badgeText: { color: '#fff', fontWeight: '800', fontSize: 12 },
+  badgeCustom: { backgroundColor: '#6a1b9a' },
+  badgeTextCustom: { color: '#fff', fontWeight: '800', fontSize: 12 },
+  badgeBase: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#1565c0' },
+  badgeTextBase: { color: '#1565c0', fontWeight: '800', fontSize: 12 },
+  actionRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
+  actionBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, minWidth: 100, alignItems: 'center' },
+  actionBtnText: { color: '#fff', fontWeight: '800' },
+  /* Lixeira */
+  trashPanel: { backgroundColor: '#f7fff7', borderRadius: 12, padding: 10, marginTop: 12, borderWidth: 1, borderColor: '#e6f6ea' },
+  trashTitle: { fontWeight: '900', textAlign: 'center', color: '#2E7D32', marginBottom: 8 },
+  emptyTrash: { padding: 16, alignItems: 'center' },
+  removedCard: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 10, padding: 10, marginBottom: 10, alignItems: 'center', elevation: 2, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } },
+  removedImage: { width: 80, height: 64, borderRadius: 6, backgroundColor: '#f2f2f2' },
+  restoreBtn: { marginTop: 8, backgroundColor: '#2E7D32', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, alignSelf: 'flex-start' },
+  modalBtn: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 8, backgroundColor: '#f0f0f0' },
+  modalBtnPrimary: { backgroundColor: '#2E7D32' },
+  modalBtnText: { color: '#333', fontWeight: '700' },
 });

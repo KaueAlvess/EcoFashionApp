@@ -110,6 +110,15 @@ export default function RoupasScreen() {
   const [listaProdutos, setListaProdutos] = React.useState(() => {
     try {
       const custom = JSON.parse(localStorage.getItem('produtos_custom') || '[]');
+      // ensure base products are persisted so admin can read them
+      try {
+        if (!localStorage.getItem('produtos_base')) {
+          localStorage.setItem('produtos_base', JSON.stringify(produtos));
+        }
+      } catch (e) {}
+      const base = JSON.parse(localStorage.getItem('produtos_base') || 'null') || produtos;
+      const overrides = JSON.parse(localStorage.getItem('produtos_overrides') || '{}');
+      const removed = JSON.parse(localStorage.getItem('produtos_removed') || '[]');
       // remove itens indesejados (p.ex. entradas de teste como 'dasd', 'KAUE', 'f wsf')
       const unwanted = ['dasd', 'kaue', 'f wsf', 'a chave', 'o virus', 'personagem de branco'];
       const filteredCustom = (custom || []).filter((p: any) => {
@@ -123,7 +132,14 @@ export default function RoupasScreen() {
           localStorage.setItem('produtos_custom', JSON.stringify(filteredCustom));
         }
       } catch (e) {}
-      return [...filteredCustom, ...produtos];
+      // apply overrides to base and filter removed
+      const baseWithOverrides = (base || []).map((b: any) => {
+        const key = String(b.nome || '').trim();
+        if (overrides && overrides[key]) return { ...b, ...overrides[key] };
+        return b;
+      }).filter((b: any) => !removed.includes(String(b.nome || '').trim()));
+      const combined = [...filteredCustom.filter((c:any) => !removed.includes(String(c.nome||'').trim())), ...baseWithOverrides];
+      return combined;
     } catch (e) {
       return produtos;
     }
@@ -156,7 +172,7 @@ export default function RoupasScreen() {
   // Escuta mudanças no localStorage para atualizar a lista (quando o usuário adiciona novas roupas)
   React.useEffect(() => {
     const handleStorage = (ev: StorageEvent) => {
-      if (ev.key === 'produtos_custom' || ev.key === '__last_produtos_update') {
+      if (ev.key === 'produtos_custom' || ev.key === '__last_produtos_update' || ev.key === 'produtos_overrides' || ev.key === 'produtos_removed' || ev.key === 'produtos_base') {
         try {
           const custom = JSON.parse(localStorage.getItem('produtos_custom') || '[]');
           const unwanted = ['dasd', 'kaue', 'f wsf', 'a chave', 'o virus', 'personagem de branco'];
@@ -173,7 +189,16 @@ export default function RoupasScreen() {
               localStorage.setItem('produtos_custom', JSON.stringify(filteredCustom));
             }
           } catch (e) {}
-          setListaProdutos([...filteredCustom, ...produtos]);
+          const base = JSON.parse(localStorage.getItem('produtos_base') || 'null') || produtos;
+          const overrides = JSON.parse(localStorage.getItem('produtos_overrides') || '{}');
+          const removed = JSON.parse(localStorage.getItem('produtos_removed') || '[]');
+          const baseWithOverrides = (base || []).map((b: any) => {
+            const key = String(b.nome || '').trim();
+            if (overrides && overrides[key]) return { ...b, ...overrides[key] };
+            return b;
+          }).filter((b: any) => !removed.includes(String(b.nome || '').trim()));
+          const combined = [...filteredCustom.filter((c:any) => !removed.includes(String(c.nome||'').trim())), ...baseWithOverrides];
+          setListaProdutos(combined);
         } catch (e) {
           setListaProdutos(produtos);
         }
