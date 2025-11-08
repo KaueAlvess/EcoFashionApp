@@ -90,6 +90,11 @@ export default function RoupasScreen() {
     descricao: string;
     imagem: string;
   } | null>(null);
+  const [showSolicModal, setShowSolicModal] = React.useState(false);
+  const [solicitacoesUser, setSolicitacoesUser] = React.useState<Array<any>>([]);
+  const [currentSolicId, setCurrentSolicId] = React.useState<number | null>(null);
+  const [deliveryProgress, setDeliveryProgress] = React.useState<Record<number, number>>({});
+  const deliveryIntervals = React.useRef<Record<number, any>>({});
   const [userTrevos, setUserTrevos] = React.useState<number>(() => {
     try {
       const t = localStorage.getItem('trevos');
@@ -214,6 +219,98 @@ export default function RoupasScreen() {
     };
   }, []);
 
+  // load user's solicitacoes_troca and listen for updates
+  React.useEffect(() => {
+    const load = () => {
+      try {
+        const raw = localStorage.getItem('solicitacoes_troca') || '[]';
+        const arr = JSON.parse(raw || '[]');
+        const uid = localStorage.getItem('idUsuario') ? parseInt(localStorage.getItem('idUsuario') as string, 10) : 0;
+        const mine = (Array.isArray(arr) ? arr : []).filter((s:any) => !s.usuario_id || s.usuario_id === uid);
+        setSolicitacoesUser(mine);
+        // initialize progress for approved items if missing
+        const map: Record<number, number> = {};
+        mine.forEach((s:any) => {
+          if (s.status === 'aprovado') {
+            map[s.id] = deliveryProgress[s.id] ?? 0;
+          }
+        });
+        if (Object.keys(map).length) setDeliveryProgress(prev => ({ ...prev, ...map }));
+      } catch (e) {
+        setSolicitacoesUser([]);
+      }
+    };
+    load();
+    const onStorage = (ev: StorageEvent) => {
+      if (!ev.key || ev.key === 'solicitacoes_troca') load();
+    };
+    try { window.addEventListener('storage', onStorage as any); } catch (e) {}
+    return () => { try { window.removeEventListener('storage', onStorage as any); } catch (e) {} };
+  }, []);
+
+  // Start delivery progress intervals for approved solicitations
+  React.useEffect(() => {
+    // start intervals for approved solicitations that don't have one yet
+    solicitacoesUser.forEach((s: any) => {
+      if (s.status === 'aprovado') {
+        const id = s.id;
+        const current = deliveryProgress[id] ?? 0;
+        const hasInterval = Boolean(deliveryIntervals.current[id]);
+        if (!hasInterval && current < 100) {
+          // start a gentle randomized progress animation
+          // slower progress: smaller steps and longer interval so delivery feels slower
+          const interval = setInterval(() => {
+            setDeliveryProgress(prev => {
+              const prevVal = prev[id] ?? 0;
+              // random step between 2 and 5 (slower)
+              const step = 2 + Math.floor(Math.random() * 4);
+              const next = Math.min(100, prevVal + step);
+              // if reached 100, clear interval
+              if (next >= 100) {
+                try { clearInterval(deliveryIntervals.current[id]); } catch (e) {}
+                deliveryIntervals.current[id] = null;
+              }
+              return { ...prev, [id]: next };
+            });
+          }, 5000);
+          deliveryIntervals.current[id] = interval;
+        }
+      }
+    });
+
+    // clean intervals for solicitations that no longer exist or are not approved
+    const activeIds = solicitacoesUser.map((s: any) => s.id);
+    Object.keys(deliveryIntervals.current).forEach(k => {
+      const key = Number(k);
+      const exists = activeIds.includes(key);
+      const corresponding = solicitacoesUser.find((s: any) => s.id === key);
+      if (!exists || !corresponding || corresponding.status !== 'aprovado') {
+        try {
+          if (deliveryIntervals.current[key]) {
+            clearInterval(deliveryIntervals.current[key]);
+          }
+        } catch (e) {}
+        delete deliveryIntervals.current[key];
+      }
+    });
+
+    return () => {
+      // don't clear intervals here; keep them per solicitation until unmount
+    };
+  }, [solicitacoesUser]);
+
+  // cleanup on unmount
+  React.useEffect(() => {
+    return () => {
+      try {
+        Object.keys(deliveryIntervals.current).forEach(k => {
+          const key = Number(k);
+          if (deliveryIntervals.current[key]) clearInterval(deliveryIntervals.current[key]);
+        });
+      } catch (e) {}
+    };
+  }, []);
+
   // Para facilitar testes locais, garantimos que o usuário possui 10 trevos
   // Isto sobrescreve apenas o valor localStorage no carregamento desta tela.
   React.useEffect(() => {
@@ -253,6 +350,29 @@ export default function RoupasScreen() {
     // definir custo do item (se o produto tiver propriedade 'custo' use-a)
     const custo = (produto as any).custo ?? COST_PER_ITEM;
     setSelectedCost(custo);
+    // create a solicitação entry with status 'em_andamento' so user sees it immediately
+    try {
+      const rawUserId = localStorage.getItem('idUsuario') || '0';
+      const usuario_id = rawUserId ? parseInt(rawUserId, 10) : 0;
+      const now = Date.now();
+      const solicit = {
+        id: now,
+        usuario_id,
+        produto: { nome: produto.nome, descricao: produto.descricao, imagem: produto.imagem },
+        custo,
+        endereco: null,
+        createdAt: new Date(now).toISOString(),
+        status: 'em_andamento'
+      };
+      const raw = localStorage.getItem('solicitacoes_troca') || '[]';
+      const arr = JSON.parse(raw || '[]');
+      arr.unshift(solicit);
+      localStorage.setItem('solicitacoes_troca', JSON.stringify(arr));
+      try { window.dispatchEvent(new StorageEvent('storage', { key: 'solicitacoes_troca', newValue: JSON.stringify(arr) } as any)); } catch (e) {}
+      setCurrentSolicId(now);
+    } catch (e) {
+      // ignore storage errors
+    }
     setFlowStage('check');
     setModalVisible(true);
   };
@@ -297,6 +417,24 @@ export default function RoupasScreen() {
           const novo = Math.max(0, userTrevos - custo);
           setUserTrevos(novo);
           try { localStorage.setItem('trevos', String(novo)); } catch (e) {}
+          // update the existing solicitação (currentSolicId) to include address and set status to 'pendente'
+          try {
+            const raw = localStorage.getItem('solicitacoes_troca') || '[]';
+            const arr = JSON.parse(raw || '[]');
+            const updated = (Array.isArray(arr) ? arr : []).map((s:any) => {
+              if (currentSolicId && s.id === currentSolicId) {
+                return { ...s, endereco: { ...(address || {}) }, status: 'pendente', updatedAt: new Date().toISOString() };
+              }
+              return s;
+            });
+            // if we didn't find it (edge case), create a new finalized entry
+            if (currentSolicId && !updated.find((x:any) => x.id === currentSolicId)) {
+              const now2 = Date.now();
+              updated.unshift({ id: now2, usuario_id: (localStorage.getItem('idUsuario') ? parseInt(localStorage.getItem('idUsuario') as string, 10) : 0), produto: produtoSelecionado ? { nome: produtoSelecionado.nome, descricao: produtoSelecionado.descricao, imagem: produtoSelecionado.imagem } : null, custo, endereco: { ...(address || {}) }, createdAt: new Date(now2).toISOString(), status: 'pendente' });
+            }
+            localStorage.setItem('solicitacoes_troca', JSON.stringify(updated));
+            try { window.dispatchEvent(new StorageEvent('storage', { key: 'solicitacoes_troca', newValue: JSON.stringify(updated) } as any)); } catch (e) {}
+          } catch (e) {}
           setFlowStage('success');
         }
         return prev - 1;
@@ -361,6 +499,9 @@ export default function RoupasScreen() {
               <Text style={[styles.chipText, activeChip === ch.key ? styles.chipTextActive : null]}>{ch.label}</Text>
             </TouchableOpacity>
           ))}
+          <TouchableOpacity style={[styles.chip, { backgroundColor: '#fff', borderWidth: 1, borderColor: '#2E7D32' }]} onPress={() => setShowSolicModal(true)}>
+            <Text style={{ color: '#2E7D32', fontWeight: '800' }}>Solicitações</Text>
+          </TouchableOpacity>
         </View>
       </View>
       {/* mostra contagem de resultados / sugestão quando vazio */}
@@ -465,6 +606,74 @@ export default function RoupasScreen() {
               </>
             )}
 
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal: Solicitações do usuário (acessível via botão ao lado dos chips) */}
+      <Modal visible={showSolicModal} transparent animationType="slide">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.32)', justifyContent: 'center', padding: 16 }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 12, maxHeight: '80%' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <Text style={{ fontWeight: '800', fontSize: 16, color: '#2E7D32' }}>Suas Solicitações</Text>
+              <TouchableOpacity onPress={() => setShowSolicModal(false)}>
+                <Text style={{ fontSize: 18 }}>&times;</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={{ paddingBottom: 12 }}>
+              {solicitacoesUser.length === 0 ? <Text>Nenhuma solicitação encontrada.</Text> : solicitacoesUser.map(s => (
+                <View key={s.id} style={{ padding: 10, backgroundColor: '#f8fff8', borderRadius: 10, marginBottom: 8 }}>
+                  <Text style={{ fontWeight: '800' }}>{s.produto?.nome}</Text>
+                  <Text style={{ color: '#666' }}>{s.produto?.descricao}</Text>
+                  <Text style={{ marginTop: 6 }}>Status: <Text style={{ fontWeight: '800' }}>{s.status}</Text></Text>
+                  <Text style={{ color: '#666', fontSize: 12 }}>Criado: {s.createdAt ? new Date(s.createdAt).toLocaleString() : ''}</Text>
+                  {s.status === 'aprovado' ? (
+                    <View style={{ marginTop: 8 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <Text style={{ fontSize: 28, marginRight: 10 }}>🚚</Text>
+                          <View>
+                            <Text style={{ fontWeight: '800', color: '#2E7D32' }}>Entrega agendada</Text>
+                            <Text style={{ color: '#356b3a' }}>{s.deliveryDate ? s.deliveryDate : 'Data não informada'}</Text>
+                          </View>
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          {deliveryProgress[s.id] >= 100 ? (
+                            <Text style={{ color: '#2E7D32', fontWeight: '900' }}>Entregue ✅</Text>
+                          ) : (
+                            <Text style={{ color: '#1976D2', fontWeight: '700' }}>{deliveryProgress[s.id] ?? 0}%</Text>
+                          )}
+                        </View>
+                      </View>
+              
+                              {/* delivery art removed per user request; keep spacing */}
+                              <View style={{ height: 8 }} />
+
+                              <View style={{ height: 12, backgroundColor: '#e6f2ea', borderRadius: 8, overflow: 'hidden', marginTop: 8 }}>
+                                <View style={{ height: 12, backgroundColor: '#2E7D32', width: `${deliveryProgress[s.id] ?? 0}%` }} />
+                              </View>
+
+                              <View style={{ marginTop: 10, padding: 12, backgroundColor: '#fff', borderRadius: 8, alignItems: 'center' }}>
+                                <Text style={{ fontWeight: '800', color: '#2E7D32' }}>Rastreamento</Text>
+                                <Text style={{ color: '#666', marginTop: 6 }}>{deliveryProgress[s.id] >= 100 ? 'Seu pedido foi entregue.' : 'Seu pedido está a caminho. Acompanhe o progresso abaixo.'}</Text>
+                                <View style={{ marginTop: 8, width: '100%', alignItems: 'center' }}>
+                                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%' }}>
+                                    <Text style={{ fontSize: 12, color: '#999' }}>Saiu para entrega</Text>
+                                    <Text style={{ fontSize: 12, color: '#999' }}>A caminho</Text>
+                                    <Text style={{ fontSize: 12, color: '#999' }}>Chegando</Text>
+                                  </View>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, width: '100%', justifyContent: 'space-between' }}>
+                                    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: deliveryProgress[s.id] > 0 ? '#2E7D32' : '#ddd' }} />
+                                    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: deliveryProgress[s.id] > 40 ? '#2E7D32' : '#ddd' }} />
+                                    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: deliveryProgress[s.id] > 80 ? '#2E7D32' : '#ddd' }} />
+                                  </View>
+                                </View>
+                              </View>
+                    </View>
+                  ) : null}
+                </View>
+              ))}
+            </ScrollView>
           </View>
         </View>
       </Modal>

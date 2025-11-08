@@ -11,6 +11,13 @@ export default function AdministracaoScreen() {
   const [isAdmin, setIsAdmin] = React.useState<boolean>(false);
   const [doacoes, setDoacoes] = React.useState<Array<any>>([]);
   const [loadingDoacoes, setLoadingDoacoes] = React.useState(false);
+  const [trocas, setTrocas] = React.useState<Array<any>>([]);
+  const [loadingTrocas, setLoadingTrocas] = React.useState(false);
+  const [approveModalVisible, setApproveModalVisible] = React.useState(false);
+  const [selectedTrocaForApprove, setSelectedTrocaForApprove] = React.useState<any | null>(null);
+  const [deliveryDate, setDeliveryDate] = React.useState('');
+  const [showDatePicker, setShowDatePicker] = React.useState(false);
+  const [dateOptions, setDateOptions] = React.useState<string[]>([]);
   const [feedbacks, setFeedbacks] = React.useState<Array<any>>([]);
   const [loadingFeedbacks, setLoadingFeedbacks] = React.useState(false);
   const [produtosAdmin, setProdutosAdmin] = React.useState<Array<any>>([]);
@@ -24,6 +31,7 @@ export default function AdministracaoScreen() {
   const [removedItems, setRemovedItems] = React.useState<Array<any>>([]);
   const router = useRouter();
   const [selectedSection, setSelectedSection] = React.useState<string | null>(null);
+  const [solicitTab, setSolicTab] = React.useState<'doacoes' | 'trocas'>('doacoes');
 
   React.useEffect(() => {
     let mounted = true;
@@ -82,6 +90,33 @@ export default function AdministracaoScreen() {
     }
     loadFeedbacks();
     return () => { mounted = false; };
+  }, [isAdmin, selectedSection]);
+
+  // load trocas (solicitações de troca) from localStorage when admin opens solicitacoes
+  React.useEffect(() => {
+    let mounted = true;
+    function loadTrocas() {
+      if (!isAdmin) return;
+      if (selectedSection !== 'solicitacoes') return;
+      setLoadingTrocas(true);
+      try {
+        const raw = localStorage.getItem('solicitacoes_troca') || '[]';
+        const arr = JSON.parse(raw || '[]');
+        if (!mounted) return;
+        setTrocas(Array.isArray(arr) ? arr : []);
+      } catch (e) {
+        if (mounted) setTrocas([]);
+      } finally {
+        if (mounted) setLoadingTrocas(false);
+      }
+    }
+    loadTrocas();
+    // also listen for storage events to refresh
+    const onStorage = (ev: StorageEvent) => {
+      if (ev.key === 'solicitacoes_troca') loadTrocas();
+    };
+    try { window.addEventListener('storage', onStorage as any); } catch (e) {}
+    return () => { mounted = false; try { window.removeEventListener('storage', onStorage as any); } catch (e) {} };
   }, [isAdmin, selectedSection]);
 
   // load products for admin management
@@ -267,6 +302,77 @@ export default function AdministracaoScreen() {
       setToast({ message: 'Erro de conexão', type: 'error' });
     }
     setTimeout(() => setToast(null), 1600);
+  };
+
+  const handleRemoveTroca = (id: number) => {
+    try {
+      const raw = localStorage.getItem('solicitacoes_troca') || '[]';
+      const arr = JSON.parse(raw || '[]');
+      const updated = (Array.isArray(arr) ? arr : []).filter((t:any) => t.id !== id);
+      localStorage.setItem('solicitacoes_troca', JSON.stringify(updated));
+      setTrocas(updated);
+      try { window.dispatchEvent(new StorageEvent('storage', { key: 'solicitacoes_troca', newValue: JSON.stringify(updated) } as any)); } catch (e) {}
+      setToast({ message: 'Solicitação de troca removida', type: 'success' });
+      setTimeout(() => setToast(null), 1400);
+    } catch (e) {
+      setToast({ message: 'Erro ao remover solicitação', type: 'error' });
+      setTimeout(() => setToast(null), 1400);
+    }
+  };
+
+  const handleMarkTrocaProcessed = (id: number) => {
+    try {
+      const raw = localStorage.getItem('solicitacoes_troca') || '[]';
+      const arr = JSON.parse(raw || '[]');
+      const updated = (Array.isArray(arr) ? arr : []).map((t:any) => (t.id === id ? { ...t, status: 'processado' } : t));
+      localStorage.setItem('solicitacoes_troca', JSON.stringify(updated));
+      setTrocas(updated);
+      try { window.dispatchEvent(new StorageEvent('storage', { key: 'solicitacoes_troca', newValue: JSON.stringify(updated) } as any)); } catch (e) {}
+      setToast({ message: 'Solicitação marcada como processada', type: 'success' });
+      setTimeout(() => setToast(null), 1400);
+    } catch (e) {
+      setToast({ message: 'Erro ao atualizar solicitação', type: 'error' });
+      setTimeout(() => setToast(null), 1400);
+    }
+  };
+
+  const openApproveModal = (troca: any) => {
+    setSelectedTrocaForApprove(troca);
+    setDeliveryDate('');
+    setApproveModalVisible(true);
+  };
+
+  // generate next 30 days for quick pick
+  React.useEffect(() => {
+    const opts: string[] = [];
+    const today = new Date();
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
+      opts.push(d.toISOString().slice(0, 10));
+    }
+    setDateOptions(opts);
+  }, []);
+
+  const handleSendReportForTroca = (id: number) => {
+    try {
+      const raw = localStorage.getItem('solicitacoes_troca') || '[]';
+      const arr = JSON.parse(raw || '[]');
+      const updated = (Array.isArray(arr) ? arr : []).map((t:any) => {
+        if (t.id === id) {
+          return { ...t, status: 'aprovado', deliveryDate: deliveryDate || null, reportSent: true, reportSentAt: new Date().toISOString() };
+        }
+        return t;
+      });
+      localStorage.setItem('solicitacoes_troca', JSON.stringify(updated));
+      setTrocas(updated);
+      try { window.dispatchEvent(new StorageEvent('storage', { key: 'solicitacoes_troca', newValue: JSON.stringify(updated) } as any)); } catch (e) {}
+      setToast({ message: 'Relatório enviado ao usuário', type: 'success' });
+      setTimeout(() => setToast(null), 1600);
+      setApproveModalVisible(false);
+    } catch (e) {
+      setToast({ message: 'Erro ao enviar relatório', type: 'error' });
+      setTimeout(() => setToast(null), 1600);
+    }
   };
 
   const handleRemoveFeedback = (id: number) => {
@@ -490,8 +596,91 @@ export default function AdministracaoScreen() {
         )}
 
         {selectedSection === 'solicitacoes' && (
-          <View style={{ flex: 1 }}>{renderDoacoesList()}</View>
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'center', marginBottom: 8 }}>
+              <TouchableOpacity style={[styles.adminBtn, solicitTab === 'doacoes' ? styles.adminBtnActive : null]} onPress={() => setSolicTab('doacoes')}>
+                <Text style={[styles.adminBtnText, solicitTab === 'doacoes' ? styles.adminBtnTextActive : null]}>Doações</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.adminBtn, solicitTab === 'trocas' ? styles.adminBtnActive : null]} onPress={() => setSolicTab('trocas')}>
+                <Text style={[styles.adminBtnText, solicitTab === 'trocas' ? styles.adminBtnTextActive : null]}>Trocas</Text>
+              </TouchableOpacity>
+            </View>
+            {solicitTab === 'doacoes' ? (
+              <View style={{ flex: 1 }}>{renderDoacoesList()}</View>
+            ) : (
+              <View style={{ flex: 1 }}>
+                {loadingTrocas ? <ActivityIndicator size="large" color="#2E7D32" /> : (
+                  <ScrollView contentContainerStyle={{ padding: 8 }}>
+                    {trocas.length === 0 && <Text>Nenhuma solicitação de troca encontrada.</Text>}
+                    {trocas.map((t) => (
+                      <View key={t.id} style={styles.doacaoCard}>
+                        {t.produto && t.produto.imagem ? (
+                          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                          // @ts-ignore
+                          <Image source={{ uri: t.produto.imagem }} style={styles.doacaoImage} />
+                        ) : null}
+                        <Text style={styles.doacaoTitle}>{t.produto?.nome || 'Produto'}</Text>
+                        <Text style={styles.doacaoMeta}>Custo: {t.custo} trevos</Text>
+                        <Text style={styles.doacaoMeta}>Endereço: {t.endereco?.rua || ''} {t.endereco?.numero || ''} — {t.endereco?.cidade || ''} {t.endereco?.cep || ''}</Text>
+                        <Text style={styles.doacaoMeta}>Criado: {new Date(t.createdAt).toLocaleString()}</Text>
+                        <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                          <TouchableOpacity style={[styles.removeBtn, { backgroundColor: '#1976D2' }]} onPress={() => openApproveModal(t)}>
+                            <Text style={{ color: '#fff', fontWeight: '700' }}>Aprovar</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity style={[styles.removeBtn, { backgroundColor: '#2E7D32' }]} onPress={() => handleMarkTrocaProcessed(t.id)}>
+                            <Text style={{ color: '#fff', fontWeight: '700' }}>Marcar Processado</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity style={styles.removeBtn} onPress={() => handleRemoveTroca(t.id)}>
+                            <Text style={{ color: '#fff', fontWeight: '700' }}>Remover</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ))}
+                  </ScrollView>
+                )}
+              </View>
+            )}
+          </View>
         )}
+        {/* Modal: Aprovar troca e enviar relatório ao usuário */}
+        <Modal visible={approveModalVisible} transparent animationType="fade">
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.32)', justifyContent: 'center', alignItems: 'center' }}>
+            <View style={{ width: '92%', maxWidth: 720, backgroundColor: '#fff', borderRadius: 12, padding: 16 }}>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: '#2E7D32', marginBottom: 8, textAlign: 'center' }}>Aprovar Solicitação</Text>
+              <Text style={{ marginBottom: 8 }}>{selectedTrocaForApprove?.produto?.nome}</Text>
+              <TouchableOpacity style={[styles.input, { justifyContent: 'center' }]} onPress={() => setShowDatePicker(true)}>
+                <Text style={{ color: deliveryDate ? '#222' : '#888' }}>{deliveryDate ? deliveryDate : 'Escolher data de entrega'}</Text>
+              </TouchableOpacity>
+              <Modal visible={showDatePicker} transparent animationType="slide">
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.32)', justifyContent: 'center', padding: 16 }}>
+                  <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 12, maxHeight: '60%' }}>
+                    <Text style={{ fontWeight: '800', marginBottom: 8 }}>Escolha a data de entrega</Text>
+                    <ScrollView>
+                      {dateOptions.map(d => (
+                        <TouchableOpacity key={d} style={{ padding: 10, borderBottomWidth: 1, borderColor: '#eee' }} onPress={() => { setDeliveryDate(d); setShowDatePicker(false); }}>
+                          <Text>{d}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                    <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 8 }}>
+                      <TouchableOpacity style={styles.modalBtn} onPress={() => setShowDatePicker(false)}>
+                        <Text style={styles.modalBtnText}>Fechar</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              </Modal>
+              <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'center', marginTop: 12 }}>
+                <TouchableOpacity style={styles.modalBtn} onPress={() => setApproveModalVisible(false)}>
+                  <Text style={styles.modalBtnText}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.modalBtn, styles.modalBtnPrimary]} onPress={() => selectedTrocaForApprove && handleSendReportForTroca(selectedTrocaForApprove.id)}>
+                  <Text style={[styles.modalBtnText, { color: '#fff' }]}>Mandar relatório para usuário</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </View>
     </View>
   );

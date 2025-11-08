@@ -1,16 +1,11 @@
-import * as ImagePicker from 'expo-image-picker';
-import { TextInput, TouchableOpacity } from 'react-native';
-// Importação correta do ImagePicker
-import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import { Animated, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function PerfilScreen() {
   const router = useRouter();
   const [nome, setNome] = useState('Nome');
   const [editandoNome, setEditandoNome] = useState(false);
-  const [userImage, setUserImage] = useState<string | null>(null);
   const quantidadeTrevos = 0;
 
   // Produtos fictícios e rotas
@@ -25,38 +20,15 @@ export default function PerfilScreen() {
   const coresQuadrados = ['#F5F5F5', '#E0E0E0', '#C8E6C9', '#B3E5FC'];
   const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
-  // Função para selecionar foto
-  const pickImage = async () => {
-    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permissionResult.granted) {
-      alert('Permissão para acessar a galeria é necessária!');
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 1,
-    });
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      setUserImage(result.assets[0].uri);
-    }
-  };
+  // foto de perfil removida: não há seleção de imagem neste perfil
 
   return (
     <View style={styles.fundoVerde}>
       {/* Ícone de usuário ou foto */}
       <View style={styles.userIconArea}>
         <View style={styles.userIconCircle}>
-          {userImage ? (
-            <Image source={userImage} style={styles.userFoto} />
-          ) : (
-            <Text style={styles.userIcon}>👤</Text>
-          )}
+          <Text style={styles.userIcon}>👤</Text>
         </View>
-        <TouchableOpacity style={styles.fotoBtn} onPress={pickImage}>
-          <Text style={styles.fotoBtnText}>Selecionar Foto</Text>
-        </TouchableOpacity>
         {/* Nome do usuário editável */}
         <View style={styles.nomeArea}>
           {editandoNome ? (
