@@ -1,6 +1,7 @@
 import storage from '@/utils/storage';
 import React, { useState } from 'react';
 import { Image, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { WebView } from 'react-native-webview';
 import Toast from '../../components/Toast';
 import TrevoTroca from '../../components/TrevoTroca';
 
@@ -67,7 +68,8 @@ import TrevoTroca from '../../components/TrevoTroca';
                     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
                     modalContent: { backgroundColor: '#fff', borderRadius: 16, padding: 24, alignItems: 'center', width: 320, elevation: 4, position: 'relative' },
                     confirmModalContent: { backgroundColor: '#fff', borderRadius: 16, padding: 24, alignItems: 'center', width: 320, elevation: 4, position: 'relative' },
-                    closeModal: { position: 'absolute', top: 8, right: 12, zIndex: 2 },
+                    closeModal: { position: 'absolute', top: 8, right: 12, zIndex: 3 },
+                    closeModalBtn: { position: 'absolute', top: 8, right: 12, zIndex: 4, width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', elevation: 6, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 3 } },
                     confirmImg: { width: 60, height: 60, borderRadius: 30, marginTop: 5, marginBottom: 5, backgroundColor: 'transparent' },
                     modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#2E7D32', marginBottom: 8, textAlign: 'center' },
                     topTabs: {
@@ -271,6 +273,57 @@ import TrevoTroca from '../../components/TrevoTroca';
                       color: '#2E7D32',
                       marginTop: 4,
                     },
+                    linkCardsRow: {
+                      flexDirection: 'row',
+                      justifyContent: 'center',
+                      gap: 12,
+                      marginTop: 12,
+                      width: '100%',
+                    },
+                    linkCard: {
+                      width: 320,
+                      backgroundColor: '#fff',
+                      borderRadius: 12,
+                      paddingVertical: 14,
+                      paddingHorizontal: 16,
+                      alignItems: 'flex-start',
+                      borderWidth: 1,
+                      borderColor: '#e6f4ea',
+                      shadowColor: '#2E7D32',
+                      shadowOpacity: 0.06,
+                      shadowRadius: 8,
+                      shadowOffset: { width: 0, height: 4 },
+                      elevation: 3,
+                    },
+                    linkCardTitle: {
+                      fontSize: 16,
+                      fontWeight: '800',
+                      color: '#145c2e',
+                    },
+                    linkCardDesc: {
+                      fontSize: 13,
+                      color: '#356b3a',
+                      marginTop: 8,
+                    },
+                    linkCardAction: {
+                      marginTop: 12,
+                      alignSelf: 'stretch',
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    },
+                    linkCardActionPill: {
+                      backgroundColor: '#2E7D32',
+                      paddingVertical: 8,
+                      paddingHorizontal: 12,
+                      borderRadius: 20,
+                      elevation: 2,
+                    },
+                    linkCardActionText: {
+                      color: '#fff',
+                      fontWeight: '800',
+                      fontSize: 13,
+                    },
                   });
 
                   const destinos = [
@@ -299,8 +352,10 @@ import TrevoTroca from '../../components/TrevoTroca';
                   const tamanhoOptions = ['36', '38', '40', '42', '44', '46', '48', '50'];
 
                   export default function DoacaoTab() {
-                    const [modalVisible, setModalVisible] = useState(true);
+                    // modalVisible was unused and defaulting to true; remove to avoid accidental overlays
                     const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+                    const [linkModalVisible, setLinkModalVisible] = useState(false);
+                    const [linkModalUrl, setLinkModalUrl] = useState('');
                     const [activeTopTab, setActiveTopTab] = useState('roupas');
                     const [addModalVisible, setAddModalVisible] = useState(false);
                     const [newNome, setNewNome] = useState('');
@@ -317,6 +372,11 @@ import TrevoTroca from '../../components/TrevoTroca';
 
                     const selectedDestino = destinos.find(d => d.key === destino);
                     const [quantidadeTrevos, setQuantidadeTrevos] = React.useState(0);
+
+                    const openLinkInModal = (url: string) => {
+                      setLinkModalUrl(url);
+                      setLinkModalVisible(true);
+                    };
 
                     React.useEffect(() => {
                       (async () => {
@@ -445,9 +505,20 @@ import TrevoTroca from '../../components/TrevoTroca';
                               <Image source={require('../../assets/images/camiseta.png')} style={styles.featuredImage} />
                               <Text style={styles.featuredTitle}>Doe uma peça, ganhe trevos ✨</Text>
                               <Text style={styles.featuredDesc}>Faça sua doação de forma rápida e responsável. Cada doação válida gera trevos que poderão ser usados por outras pessoas na área de Roupas.</Text>
-                              <TouchableOpacity style={styles.featuredButton} onPress={() => setAddModalVisible(true)} activeOpacity={0.85}>
-                                <Text style={styles.featuredButtonText}>✨ Adicionar peça</Text>
-                              </TouchableOpacity>
+                              {Platform.OS === 'web' ? (
+                                // Use a plain HTML button on web to avoid occasional react-native-web touchable/text rendering quirks
+                                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                                // @ts-ignore
+                                <button onClick={() => setAddModalVisible(true)} style={{ all: 'unset', cursor: 'pointer' }} aria-label="Adicionar peça">
+                                  <div style={{ backgroundColor: '#2E7D32', padding: '12px 28px', borderRadius: 30, color: '#fff', fontWeight: 800, fontSize: 16, textAlign: 'center', display: 'inline-block' }}>
+                                    ✨ Adicionar peça
+                                  </div>
+                                </button>
+                              ) : (
+                                <TouchableOpacity style={styles.featuredButton} onPress={() => setAddModalVisible(true)} activeOpacity={0.85} accessibilityLabel="Adicionar peça">
+                                  <Text style={styles.featuredButtonText}>✨ Adicionar peça</Text>
+                                </TouchableOpacity>
+                              )}
                             </View>
                           </View>
 
@@ -455,6 +526,67 @@ import TrevoTroca from '../../components/TrevoTroca';
                           <View style={{ width: '100%', alignItems: 'center', marginTop: 8 }}>
                             <Text style={styles.sectionTitle}>Outras opções de doações</Text>
                             <Text style={styles.subtitle}>Doe roupas que você não usa mais — entregue para entidades, envie para bazares ou participe de trocas. Cada doação válida gera trevos de troca que você pode usar para adquirir outras peças.</Text>
+                          </View>
+
+                          {/* Links para pontos de coleta externos */}
+                          <View style={styles.linkCardsRow}>
+                            {/* Exército de Salvação */}
+                            {Platform.OS === 'web' ? (
+                              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                              // @ts-ignore
+                              <a href="#" onClick={(e:any) => { e.preventDefault(); openLinkInModal('https://www.amigosdobem.org/arrecadacaodeprodutos'); }} style={{ textDecoration: 'none', cursor: 'pointer' }}>
+                                <div style={{ display: 'inline-block' }}>
+                                  <View style={styles.linkCard}>
+                                    <Text style={styles.linkCardTitle}>Amigos do Bem</Text>
+                                    <Text style={styles.linkCardDesc}>Pontos de arrecadação — descubra locais para doar produtos e roupas.</Text>
+                                    <View style={styles.linkCardAction}>
+                                      <View style={styles.linkCardActionPill}>
+                                        <Text style={styles.linkCardActionText}>Abrir ↗</Text>
+                                      </View>
+                                    </View>
+                                  </View>
+                                </div>
+                              </a>
+                            ) : (
+                              <TouchableOpacity style={styles.linkCard} activeOpacity={0.85} onPress={() => openLinkInModal('https://www.amigosdobem.org/arrecadacaodeprodutos')}>
+                                <Text style={styles.linkCardTitle}>Amigos do Bem</Text>
+                                <Text style={styles.linkCardDesc}>Pontos de arrecadação — descubra locais para doar produtos e roupas.</Text>
+                                <View style={styles.linkCardAction}>
+                                  <View style={styles.linkCardActionPill}>
+                                    <Text style={styles.linkCardActionText}>Abrir ↗</Text>
+                                  </View>
+                                </View>
+                              </TouchableOpacity>
+                            )}
+
+                            {/* Gerando Falcões */}
+                            {Platform.OS === 'web' ? (
+                              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                              // @ts-ignore
+                              <a href="#" onClick={(e:any) => { e.preventDefault(); openLinkInModal('https://gerandofalcoes.com/pontos-de-coleta'); }} style={{ textDecoration: 'none', cursor: 'pointer' }}>
+                                <div style={{ display: 'inline-block' }}>
+                                  <View style={styles.linkCard}>
+                                    <Text style={styles.linkCardTitle}>Gerando Falcões</Text>
+                                    <Text style={styles.linkCardDesc}>Consulte pontos de coleta locais e contribua com campanhas sociais.</Text>
+                                    <View style={styles.linkCardAction}>
+                                      <View style={styles.linkCardActionPill}>
+                                        <Text style={styles.linkCardActionText}>Abrir ↗</Text>
+                                      </View>
+                                    </View>
+                                  </View>
+                                </div>
+                              </a>
+                            ) : (
+                              <TouchableOpacity style={styles.linkCard} activeOpacity={0.85} onPress={() => openLinkInModal('https://gerandofalcoes.com/pontos-de-coleta')}>
+                                <Text style={styles.linkCardTitle}>Gerando Falcões</Text>
+                                <Text style={styles.linkCardDesc}>Consulte pontos de coleta locais e contribua com campanhas sociais.</Text>
+                                <View style={styles.linkCardAction}>
+                                  <View style={styles.linkCardActionPill}>
+                                    <Text style={styles.linkCardActionText}>Abrir ↗</Text>
+                                  </View>
+                                </View>
+                              </TouchableOpacity>
+                            )}
                           </View>
 
                           <Modal visible={addModalVisible} transparent animationType="slide">
@@ -508,6 +640,39 @@ import TrevoTroca from '../../components/TrevoTroca';
                                   numberOfLines={3}
                                   style={[styles.textArea, { height: 80, marginBottom: 12 }]}
                                 />
+                                {/* New button: move locally to admin solicitations immediately (works offline) */}
+                                <TouchableOpacity
+                                  style={[styles.optionBtn, { width: 160, backgroundColor: '#fff', borderWidth: 1, borderColor: '#2E7D32', marginBottom: 8 }]}
+                                  onPress={async () => {
+                                    try {
+                                      if (!newNome || !newImagem) {
+                                        setToast({ message: 'Preencha nome e imagem.', type: 'error' });
+                                        setTimeout(() => setToast(null), 2000);
+                                        return;
+                                      }
+                                      // add to local solicitations so admin can review even if server is offline
+                                      const raw = (await storage.getItem('solicitacoes_doacao')) || '[]';
+                                      let arr = [] as any[];
+                                      try { arr = JSON.parse(raw || '[]'); } catch (e) { arr = []; }
+                                      const uid = (await storage.getItem('idUsuario')) || '0';
+                                      const solicit = { id: Date.now(), usuario_id: parseInt(uid as string, 10) || 0, nome: newNome, descricao: newDescricao, imagem: newImagem, createdAt: new Date().toISOString(), status: 'pendente' };
+                                      arr.unshift(solicit);
+                                      await storage.setItem('solicitacoes_doacao', JSON.stringify(arr));
+                                      setToast({ message: 'Movido para solicitações (Admin).', type: 'success' });
+                                      setTimeout(() => setToast(null), 1400);
+                                      setAddModalVisible(false);
+                                      setNewNome('');
+                                      setNewImagem('');
+                                      setNewDescricao('');
+                                    } catch (e) {
+                                      setToast({ message: 'Erro ao mover para solicitações', type: 'error' });
+                                      setTimeout(() => setToast(null), 2000);
+                                    }
+                                  }}
+                                >
+                                  <Text style={{ color: '#145c2e', fontWeight: '700', textAlign: 'center' }}>Mover para Solicitações</Text>
+                                </TouchableOpacity>
+
                                 <TouchableOpacity
                                   style={[styles.optionBtn, { width: 160 }]}
                                   onPress={async () => {
@@ -532,6 +697,16 @@ import TrevoTroca from '../../components/TrevoTroca';
                                           setNewNome('');
                                           setNewImagem('');
                                           setNewDescricao('');
+                                          try {
+                                            // also register a local solicitation so admin web panel can review it
+                                            const raw2 = localStorage.getItem('solicitacoes_doacao') || '[]';
+                                            const arr2 = JSON.parse(raw2 || '[]');
+                                            const uid2 = await storage.getItem('idUsuario') || '0';
+                                            const solicit = { id: Date.now(), usuario_id: parseInt(uid2 as string, 10) || 0, nome: newNome, descricao: newDescricao, imagem: newImagem, createdAt: new Date().toISOString(), status: 'pendente' };
+                                            arr2.unshift(solicit);
+                                            localStorage.setItem('solicitacoes_doacao', JSON.stringify(arr2));
+                                            try { window.dispatchEvent(new StorageEvent('storage', { key: 'solicitacoes_doacao', newValue: JSON.stringify(arr2) } as any)); } catch (e) {}
+                                          } catch (e) {}
                                         } else {
                                           setToast({ message: data.error || 'Erro ao enviar imagem', type: 'error' });
                                           setTimeout(() => setToast(null), 2000);
@@ -563,6 +738,15 @@ import TrevoTroca from '../../components/TrevoTroca';
                                           setNewNome('');
                                           setNewImagem('');
                                           setNewDescricao('');
+                                            try {
+                                              const raw = localStorage.getItem('solicitacoes_doacao') || '[]';
+                                              const arr = JSON.parse(raw || '[]');
+                                              const uid = await storage.getItem('idUsuario') || '0';
+                                              const solicit = { id: Date.now(), usuario_id: parseInt(uid as string, 10) || 0, nome: newNome, descricao: newDescricao, imagem: newImagem, createdAt: new Date().toISOString(), status: 'pendente' };
+                                              arr.unshift(solicit);
+                                              localStorage.setItem('solicitacoes_doacao', JSON.stringify(arr));
+                                              try { window.dispatchEvent(new StorageEvent('storage', { key: 'solicitacoes_doacao', newValue: JSON.stringify(arr) } as any)); } catch (e) {}
+                                            } catch (e) {}
                                         } else {
                                           setToast({ message: data.error || 'Erro ao enviar imagem', type: 'error' });
                                           setTimeout(() => setToast(null), 2000);
@@ -576,6 +760,24 @@ import TrevoTroca from '../../components/TrevoTroca';
                                 >
                                   <Text style={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}>Enviar para Admin</Text>
                                 </TouchableOpacity>
+                              </View>
+                            </View>
+                          </Modal>
+
+                          {/* Modal para abrir links externos dentro do app (iframe/webview) */}
+                          <Modal visible={linkModalVisible} transparent animationType="slide">
+                            <View style={styles.modalOverlay}>
+                              <View style={[styles.modalContent, { width: '92%', maxWidth: 1000, height: '80%', padding: 0, overflow: 'hidden' }]}>
+                                <TouchableOpacity style={styles.closeModalBtn} onPress={() => setLinkModalVisible(false)} accessibilityLabel="Fechar" accessibilityRole="button">
+                                  <Text style={{ fontSize: 20, fontWeight: '900' }}>✕</Text>
+                                </TouchableOpacity>
+                                {Platform.OS === 'web' ? (
+                                  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                                  // @ts-ignore
+                                  <iframe src={linkModalUrl} title="Pontos de Coleta" style={{ flex: 1, width: '100%', height: '100%', border: 0, borderRadius: 12 }} />
+                                ) : (
+                                  <WebView source={{ uri: linkModalUrl }} style={{ flex: 1 }} />
+                                )}
                               </View>
                             </View>
                           </Modal>

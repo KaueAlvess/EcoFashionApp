@@ -1,6 +1,6 @@
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import React from 'react';
-import { Platform } from 'react-native';
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 // ...existing code...
 
 import { HapticTab } from '@/components/HapticTab';
@@ -11,11 +11,19 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const router = useRouter();
   
   
 
   return (
-    
+    <>
+      {/* Small global back button: appears on every tab layout; hidden on root screens if no history */}
+      <View style={styles.backWrap} pointerEvents="box-none">
+        <TouchableOpacity onPress={() => { try { router.back(); } catch (e) {} }} style={styles.backBtn} accessibilityLabel="Voltar">
+          <Text style={styles.backTxt}>←</Text>
+        </TouchableOpacity>
+      </View>
+
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
@@ -97,5 +105,12 @@ export default function TabLayout() {
       />
       
       </Tabs>
+    </>
   );
 }
+
+const styles = StyleSheet.create({
+  backWrap: { position: 'absolute', top: Platform.OS === 'web' ? 12 : 6, left: 12, zIndex: 999 },
+  backBtn: { backgroundColor: 'rgba(0,0,0,0.6)', padding: 8, borderRadius: 8 },
+  backTxt: { color: '#fff', fontWeight: '700', fontSize: 16 },
+});

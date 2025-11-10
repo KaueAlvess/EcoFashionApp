@@ -1,7 +1,7 @@
 import storage from '@/utils/storage';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, Image, ImageBackground, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, ImageBackground, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Toast from '../components/Toast';
 
 export default function AdministracaoScreen() {
@@ -10,11 +10,15 @@ export default function AdministracaoScreen() {
   const [toast, setToast] = React.useState<{ message: string; type?: 'success' | 'error' } | null>(null);
   const [isAdmin, setIsAdmin] = React.useState<boolean>(false);
   const [doacoes, setDoacoes] = React.useState<Array<any>>([]);
+  const [solicitacoesDoacao, setSolicitacoesDoacao] = React.useState<Array<any>>([]);
   const [loadingDoacoes, setLoadingDoacoes] = React.useState(false);
   const [trocas, setTrocas] = React.useState<Array<any>>([]);
   const [loadingTrocas, setLoadingTrocas] = React.useState(false);
   const [approveModalVisible, setApproveModalVisible] = React.useState(false);
   const [selectedTrocaForApprove, setSelectedTrocaForApprove] = React.useState<any | null>(null);
+  const [rejectModalVisible, setRejectModalVisible] = React.useState(false);
+  const [rejectTargetId, setRejectTargetId] = React.useState<number | null>(null);
+  const [rejectReason, setRejectReason] = React.useState('');
   const [deliveryDate, setDeliveryDate] = React.useState('');
   const [showDatePicker, setShowDatePicker] = React.useState(false);
   const [dateOptions, setDateOptions] = React.useState<string[]>([]);
@@ -69,6 +73,29 @@ export default function AdministracaoScreen() {
     load();
     return () => { mounted = false; };
   }, [isAdmin]);
+
+  // load local solicitacoes_de_doacao from localStorage when admin opens solicitacoes/doacoes
+  React.useEffect(() => {
+    let mounted = true;
+    function loadLocal() {
+      if (!isAdmin) return;
+      if (selectedSection !== 'solicitacoes' || solicitTab !== 'doacoes') return;
+      try {
+        const raw = localStorage.getItem('solicitacoes_doacao') || '[]';
+        const arr = JSON.parse(raw || '[]');
+        if (!mounted) return;
+        setSolicitacoesDoacao(Array.isArray(arr) ? arr : []);
+      } catch (e) {
+        if (mounted) setSolicitacoesDoacao([]);
+      }
+    }
+    loadLocal();
+    const onStorage = (ev: StorageEvent) => {
+      if (ev.key === 'solicitacoes_doacao') loadLocal();
+    };
+    try { window.addEventListener('storage', onStorage as any); } catch (e) {}
+    return () => { mounted = false; try { window.removeEventListener('storage', onStorage as any); } catch (e) {} };
+  }, [isAdmin, selectedSection, solicitTab]);
 
   // load feedbacks from localStorage when admin opens feedbacks section
   React.useEffect(() => {
@@ -304,6 +331,113 @@ export default function AdministracaoScreen() {
     setTimeout(() => setToast(null), 1600);
   };
 
+  const handleApproveSolicitacaoDoacao = (id: number) => {
+    try {
+      const raw = localStorage.getItem('solicitacoes_doacao') || '[]';
+      const arr = JSON.parse(raw || '[]') || [];
+      const original = (Array.isArray(arr) ? arr : []).find((s:any) => s.id === id);
+
+      if (original) {
+        // add product to produtos_custom
+        try {
+          const customRaw = localStorage.getItem('produtos_custom') || '[]';
+          const custom = JSON.parse(customRaw || '[]') || [];
+          const newProd = { nome: original.nome, descricao: original.descricao || '', imagem: original.imagem || '', addedAt: new Date().toISOString(), recent: true };
+          custom.unshift(newProd);
+          localStorage.setItem('produtos_custom', JSON.stringify(custom));
+          try { window.dispatchEvent(new StorageEvent('storage', { key: 'produtos_custom', newValue: JSON.stringify(custom) } as any)); } catch (e) {}
+
+          // notify the user by adding an entry to a per-user solicitation list
+          try {
+            const userKey = 'solicitacoes_doacao_usuario';
+            const rawUser = localStorage.getItem(userKey) || '[]';
+            const userArr = JSON.parse(rawUser || '[]') || [];
+            userArr.unshift({ id: Date.now(), originalSolicitId: original.id, usuario_id: original.usuario_id || 0, nome: original.nome, status: 'aprovado', adminMessage: 'Sua doação foi aprovada e adicionada ao catálogo.', createdAt: new Date().toISOString(), produto: newProd });
+            localStorage.setItem(userKey, JSON.stringify(userArr));
+            try { window.dispatchEvent(new StorageEvent('storage', { key: userKey, newValue: JSON.stringify(userArr) } as any)); } catch (e) {}
+          } catch (e) {}
+        } catch (e) {
+          // ignore product add errors
+        }
+      }
+
+      // remove the processed solicitation from the admin list so it disappears
+      const remaining = (Array.isArray(arr) ? arr : []).filter((s:any) => s.id !== id);
+      localStorage.setItem('solicitacoes_doacao', JSON.stringify(remaining));
+      try { window.dispatchEvent(new StorageEvent('storage', { key: 'solicitacoes_doacao', newValue: JSON.stringify(remaining) } as any)); } catch (e) {}
+      setSolicitacoesDoacao(remaining);
+      setToast({ message: 'Solicitação aprovada e adicionada às roupas', type: 'success' });
+      setTimeout(() => setToast(null), 1400);
+      // trigger reload of admin produtos
+      reloadAdminProdutos();
+    } catch (e) {
+      setToast({ message: 'Erro ao aprovar solicitação', type: 'error' });
+      setTimeout(() => setToast(null), 1400);
+    }
+  };
+
+  const openRejectModal = (id: number) => {
+    setRejectTargetId(id);
+    setRejectReason('');
+    setRejectModalVisible(true);
+  };
+
+  const handleRejectSolicitacaoDoacaoConfirmed = (id: number, reason: string) => {
+    try {
+      const raw = localStorage.getItem('solicitacoes_doacao') || '[]';
+      const arr = JSON.parse(raw || '[]') || [];
+      const original = (Array.isArray(arr) ? arr : []).find((s:any) => s.id === id);
+
+      if (original) {
+        try {
+          // Ensure the item exists in produtos_custom so lixeira can reference it
+          const customRaw = localStorage.getItem('produtos_custom') || '[]';
+          const customArr = Array.isArray(JSON.parse(customRaw || '[]')) ? JSON.parse(customRaw || '[]') : [];
+          const exists = (customArr || []).some((c:any) => String(c.nome || '') === String(original.nome || ''));
+          if (!exists) {
+            const newProd = { nome: original.nome, descricao: original.descricao || '', imagem: original.imagem || '', addedAt: new Date().toISOString(), recent: false };
+            customArr.unshift(newProd);
+            localStorage.setItem('produtos_custom', JSON.stringify(customArr));
+            try { window.dispatchEvent(new StorageEvent('storage', { key: 'produtos_custom', newValue: JSON.stringify(customArr) } as any)); } catch (e) {}
+          }
+
+          const removedRaw = localStorage.getItem('produtos_removed') || '[]';
+          const removedArr = Array.isArray(JSON.parse(removedRaw || '[]')) ? JSON.parse(removedRaw || '[]') : [];
+          if (!removedArr.includes(String(original.nome || ''))) {
+            removedArr.push(String(original.nome || ''));
+            localStorage.setItem('produtos_removed', JSON.stringify(removedArr));
+            try { window.dispatchEvent(new StorageEvent('storage', { key: 'produtos_removed', newValue: JSON.stringify(removedArr) } as any)); } catch (e) {}
+          }
+
+          // write response to user-specific notifications list
+          try {
+            const userKey = 'solicitacoes_doacao_usuario';
+            const rawUser = localStorage.getItem(userKey) || '[]';
+            const userArr = JSON.parse(rawUser || '[]') || [];
+            userArr.unshift({ id: Date.now(), originalSolicitId: original.id, usuario_id: original.usuario_id || 0, nome: original.nome, status: 'reprovado', adminMessage: reason || 'Doação reprovada pelo administrador.', createdAt: new Date().toISOString() });
+            localStorage.setItem(userKey, JSON.stringify(userArr));
+            try { window.dispatchEvent(new StorageEvent('storage', { key: userKey, newValue: JSON.stringify(userArr) } as any)); } catch (e) {}
+          } catch (e) {}
+        } catch (e) {
+          // ignore sub-errors
+        }
+      }
+
+      // remove from admin solicitations
+      const remaining = (Array.isArray(arr) ? arr : []).filter((s:any) => s.id !== id);
+      localStorage.setItem('solicitacoes_doacao', JSON.stringify(remaining));
+      try { window.dispatchEvent(new StorageEvent('storage', { key: 'solicitacoes_doacao', newValue: JSON.stringify(remaining) } as any)); } catch (e) {}
+      setSolicitacoesDoacao(remaining);
+      setToast({ message: 'Solicitação reprovada e enviada para a Lixeira', type: 'success' });
+      setTimeout(() => setToast(null), 1400);
+      // trigger admin products reload to reflect new custom/removed entries
+      reloadAdminProdutos();
+    } catch (e) {
+      setToast({ message: 'Erro ao reprovar solicitação', type: 'error' });
+      setTimeout(() => setToast(null), 1400);
+    }
+  };
+
   const handleRemoveTroca = (id: number) => {
     try {
       const raw = localStorage.getItem('solicitacoes_troca') || '[]';
@@ -316,6 +450,51 @@ export default function AdministracaoScreen() {
       setTimeout(() => setToast(null), 1400);
     } catch (e) {
       setToast({ message: 'Erro ao remover solicitação', type: 'error' });
+      setTimeout(() => setToast(null), 1400);
+    }
+  };
+
+  const handleRejectTroca = (id: number) => {
+    try {
+      const raw = localStorage.getItem('solicitacoes_troca') || '[]';
+      const arr = JSON.parse(raw || '[]');
+      const updated = (Array.isArray(arr) ? arr : []).map((t:any) => (t.id === id ? { ...t, status: 'reprovado', reviewedAt: new Date().toISOString() } : t));
+      localStorage.setItem('solicitacoes_troca', JSON.stringify(updated));
+
+      // find the rejected troca and move related produto to produtos_custom/removed so it appears in Lixeira
+      const rejected = updated.find((t:any) => t.id === id);
+      if (rejected && rejected.produto) {
+        try {
+          const prod = rejected.produto;
+          const customRaw = localStorage.getItem('produtos_custom') || '[]';
+          const customArr = Array.isArray(JSON.parse(customRaw || '[]')) ? JSON.parse(customRaw || '[]') : [];
+          const exists = (customArr || []).some((c:any) => String(c.nome || '') === String(prod.nome || ''));
+          if (!exists) {
+            const newProd = { nome: prod.nome || '', descricao: prod.descricao || '', imagem: prod.imagem || '', addedAt: new Date().toISOString(), recent: false };
+            customArr.unshift(newProd);
+            localStorage.setItem('produtos_custom', JSON.stringify(customArr));
+            try { window.dispatchEvent(new StorageEvent('storage', { key: 'produtos_custom', newValue: JSON.stringify(customArr) } as any)); } catch (e) {}
+          }
+
+          const removedRaw = localStorage.getItem('produtos_removed') || '[]';
+          const removedArr = Array.isArray(JSON.parse(removedRaw || '[]')) ? JSON.parse(removedRaw || '[]') : [];
+          if (!removedArr.includes(String(prod.nome || ''))) {
+            removedArr.push(String(prod.nome || ''));
+            localStorage.setItem('produtos_removed', JSON.stringify(removedArr));
+            try { window.dispatchEvent(new StorageEvent('storage', { key: 'produtos_removed', newValue: JSON.stringify(removedArr) } as any)); } catch (e) {}
+          }
+        } catch (e) {
+          // ignore sub-errors
+        }
+      }
+
+      setTrocas(updated);
+      try { window.dispatchEvent(new StorageEvent('storage', { key: 'solicitacoes_troca', newValue: JSON.stringify(updated) } as any)); } catch (e) {}
+      setToast({ message: 'Solicitação de troca reprovada e movida para Lixeira', type: 'success' });
+      setTimeout(() => setToast(null), 1400);
+      reloadAdminProdutos();
+    } catch (e) {
+      setToast({ message: 'Erro ao reprovar solicitação de troca', type: 'error' });
       setTimeout(() => setToast(null), 1400);
     }
   };
@@ -393,6 +572,12 @@ export default function AdministracaoScreen() {
   if (!isAdmin) {
     return (
       <View style={{ flex: 1, backgroundColor: '#F5F5F5', justifyContent: 'center' }}>
+        {/* Back button for login view (in case global overlay is hidden) */}
+        <View style={{ position: 'absolute', top: Platform.OS === 'web' ? 12 : 6, left: 12, zIndex: 999 }} pointerEvents="box-none">
+          <TouchableOpacity onPress={() => { try { router.back(); } catch (e) { try { router.replace('/'); } catch {} } }} style={{ backgroundColor: 'rgba(0,0,0,0.6)', padding: 8, borderRadius: 8 }} accessibilityLabel="Voltar">
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>←</Text>
+          </TouchableOpacity>
+        </View>
         {toast ? <Toast message={toast.message} type={toast.type} /> : null}
         <View style={styles.logoContainer}>
           <Image
@@ -438,7 +623,35 @@ export default function AdministracaoScreen() {
       <ActivityIndicator size="large" color="#2E7D32" />
     ) : (
       <ScrollView contentContainerStyle={{ padding: 8 }}>
-        {doacoes.length === 0 && <Text>Nenhuma doação encontrada.</Text>}
+        {/* local solicitations (pending donations from users) shown first */}
+        {solicitacoesDoacao && solicitacoesDoacao.length > 0 ? (
+          <>
+            <Text style={{ fontWeight: '800', marginBottom: 8 }}>Solicitações de Doação (pendentes)</Text>
+            {solicitacoesDoacao.map((s) => (
+              <View key={s.id} style={[styles.doacaoCard, { borderColor: '#cfeedd', borderWidth: 1 }]}>
+                {s.imagem ? (
+                  // @ts-ignore
+                  <Image source={{ uri: s.imagem }} style={styles.doacaoImage} />
+                ) : null}
+                <Text style={styles.doacaoTitle}>{s.nome || s.descricao || 'Sem título'}</Text>
+                <Text style={styles.doacaoMeta}>Criado: {s.createdAt ? new Date(s.createdAt).toLocaleString() : ''}</Text>
+                <Text style={styles.doacaoMeta}>Status: {s.status || 'pendente'}</Text>
+                {s.adminMessage ? <Text style={[styles.doacaoMeta, { marginTop: 6, color: '#444' }]}>Resposta ao usuário: {s.adminMessage}</Text> : null}
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                  <TouchableOpacity style={[styles.removeBtn, { backgroundColor: '#1976D2' }]} onPress={() => handleApproveSolicitacaoDoacao(s.id)}>
+                    <Text style={{ color: '#fff', fontWeight: '700' }}>Aprovar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.removeBtn, { backgroundColor: '#B71C1C' }]} onPress={() => openRejectModal(s.id)}>
+                    <Text style={{ color: '#fff', fontWeight: '700' }}>Reprovar</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+            <View style={{ height: 8 }} />
+          </>
+        ) : null}
+
+        {doacoes.length === 0 && solicitacoesDoacao.length === 0 && <Text>Nenhuma doação encontrada.</Text>}
         {doacoes.map((d) => (
           <View key={d.id} style={styles.doacaoCard}>
             {d.fotoUrl ? (
@@ -462,6 +675,10 @@ export default function AdministracaoScreen() {
     <View style={{ flex: 1, backgroundColor: '#F5F5F5' }}>
       <ImageBackground source={require('../assets/images/trevo.png')} style={styles.adminHeaderBg} imageStyle={{ opacity: 0.06, resizeMode: 'cover' }}>
         <View style={styles.adminHeaderContent}>
+          {/* Back button inside admin header */}
+          <TouchableOpacity onPress={() => { try { router.back(); } catch (e) { try { router.replace('/'); } catch {} } }} style={{ marginRight: 8, backgroundColor: 'rgba(0,0,0,0.08)', padding: 8, borderRadius: 8 }} accessibilityLabel="Voltar">
+            <Text style={{ color: '#0b3b0f', fontWeight: '700' }}>←</Text>
+          </TouchableOpacity>
           <Image source={require('../assets/images/logo.png')} style={styles.adminLogo} resizeMode="contain" />
           <View style={{ flex: 1, marginLeft: 12, alignItems: 'center' }}>
             <Text style={styles.adminTitle}>Área de Administrador</Text>
@@ -484,7 +701,10 @@ export default function AdministracaoScreen() {
         </View>
       </ImageBackground>
 
-      <View style={{ flex: 1, padding: 12 }}>
+  {/* Small back button inside admin header (visible when authenticated) */}
+  {/* It will be rendered as part of the header content so it's easy to reach */}
+
+  <View style={{ flex: 1, padding: 12 }}>
         {selectedSection === null && (
           <View style={styles.sectionPlaceholder}>
             <Text style={{ fontSize: 18, fontWeight: '700', color: '#2E7D32', marginBottom: 6 }}>Bem-vindo ao painel</Text>
@@ -630,6 +850,9 @@ export default function AdministracaoScreen() {
                           <TouchableOpacity style={[styles.removeBtn, { backgroundColor: '#2E7D32' }]} onPress={() => handleMarkTrocaProcessed(t.id)}>
                             <Text style={{ color: '#fff', fontWeight: '700' }}>Marcar Processado</Text>
                           </TouchableOpacity>
+                          <TouchableOpacity style={[styles.removeBtn, { backgroundColor: '#B71C1C' }]} onPress={() => handleRejectTroca(t.id)}>
+                            <Text style={{ color: '#fff', fontWeight: '700' }}>Reprovar</Text>
+                          </TouchableOpacity>
                           <TouchableOpacity style={styles.removeBtn} onPress={() => handleRemoveTroca(t.id)}>
                             <Text style={{ color: '#fff', fontWeight: '700' }}>Remover</Text>
                           </TouchableOpacity>
@@ -676,6 +899,29 @@ export default function AdministracaoScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.modalBtn, styles.modalBtnPrimary]} onPress={() => selectedTrocaForApprove && handleSendReportForTroca(selectedTrocaForApprove.id)}>
                   <Text style={[styles.modalBtnText, { color: '#fff' }]}>Mandar relatório para usuário</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+        {/* Modal: Reprovar solicitação com justificativa (doações) */}
+        <Modal visible={rejectModalVisible} transparent animationType="fade">
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.32)', justifyContent: 'center', alignItems: 'center' }}>
+            <View style={{ width: '92%', maxWidth: 720, backgroundColor: '#fff', borderRadius: 12, padding: 16 }}>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: '#B71C1C', marginBottom: 8, textAlign: 'center' }}>Reprovar Solicitação</Text>
+              <Text style={{ marginBottom: 8 }}>Escreva uma justificativa que será enviada ao usuário:</Text>
+              <TextInput value={rejectReason} onChangeText={setRejectReason} multiline style={[styles.input, { minHeight: 100 }]} placeholder="Motivo da reprovação (ex.: condição, falta de informação, etc.)" />
+              <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'center', marginTop: 12 }}>
+                <TouchableOpacity style={styles.modalBtn} onPress={() => { setRejectModalVisible(false); setRejectTargetId(null); setRejectReason(''); }}>
+                  <Text style={styles.modalBtnText}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.modalBtn, styles.modalBtnPrimary]} onPress={() => {
+                  if (rejectTargetId) handleRejectSolicitacaoDoacaoConfirmed(rejectTargetId, rejectReason || 'Doação reprovada pelo administrador.');
+                  setRejectModalVisible(false);
+                  setRejectTargetId(null);
+                  setRejectReason('');
+                }}>
+                  <Text style={[styles.modalBtnText, { color: '#fff' }]}>Confirmar reprovação</Text>
                 </TouchableOpacity>
               </View>
             </View>

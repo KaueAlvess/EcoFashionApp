@@ -1,5 +1,6 @@
+import storage from '@/utils/storage';
 import React from 'react';
-import { Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { Animated, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 
 const produtos = [
   {
@@ -105,6 +106,17 @@ export default function RoupasScreen() {
   });
   const COST_PER_ITEM = 3; // custo padrão por troca (pode ajustar)
   const [selectedCost, setSelectedCost] = React.useState<number | null>(null);
+
+  const [profileName, setProfileName] = React.useState<string | null>(null);
+  const [profileImage, setProfileImage] = React.useState<string | null>(null);
+  const [favoritos, setFavoritos] = React.useState<any[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('favoritos') || '[]');
+    } catch (e) { return []; }
+  });
+
+  const router = require('expo-router').useRouter();
+  const profileOpacity = React.useRef(new Animated.Value(0));
 
   // fluxo de modais/etapas: 'check' | 'address' | 'loading' | 'success' | 'not_enough' | null
   const [flowStage, setFlowStage] = React.useState<string | null>(null);
@@ -218,6 +230,85 @@ export default function RoupasScreen() {
       } catch (e) {}
     };
   }, []);
+
+  // Load profile info (name + image) from storage and listen for changes
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const name = await storage.getItem('profile_name');
+        const img = await storage.getItem('profile_image');
+        if (!mounted) return;
+        setProfileName(name);
+        setProfileImage(img);
+        if (img) {
+          // fade in initial image
+          try { profileOpacity.current.setValue(0); Animated.timing(profileOpacity.current as any, { toValue: 1, duration: 350, useNativeDriver: true }).start(); } catch (e) {}
+        }
+      } catch (e) {
+        // ignore
+      }
+    })();
+
+    const onStorage = (ev: StorageEvent) => {
+      if (!mounted) return;
+      if (ev.key === 'profile_name') setProfileName(ev.newValue);
+      if (ev.key === 'profile_image') setProfileImage(ev.newValue);
+    };
+    try { window.addEventListener('storage', onStorage as any); } catch (e) {}
+
+    // also subscribe to storage wrapper changes
+    const cb = (k:string, v:string|null) => {
+      if (!mounted) return;
+      if (k === 'profile_name') setProfileName(v);
+      if (k === 'profile_image') setProfileImage(v);
+    };
+    try { storage.addChangeListener(cb); } catch (e) {}
+
+    return () => { mounted = false; try { window.removeEventListener('storage', onStorage as any); } catch (e) {} try { storage.removeChangeListener(cb); } catch (e) {} };
+  }, []);
+
+  // animate when profileImage changes
+  React.useEffect(() => {
+    if (!profileImage) return;
+    try {
+      profileOpacity.current.setValue(0);
+      Animated.timing(profileOpacity.current as any, { toValue: 1, duration: 350, useNativeDriver: true }).start();
+    } catch (e) {}
+  }, [profileImage]);
+
+  const handleLogoutUser = async () => {
+    try {
+      // clear user id from cross-platform storage and localStorage
+      try { await storage.removeItem('idUsuario'); } catch (e) {}
+      try { localStorage.removeItem('idUsuario'); } catch (e) {}
+    } catch (e) {}
+    try { router.replace('/'); } catch (e) { try { router.push('/'); } catch (e) {} }
+  };
+
+  const isFavorito = (produto:any) => {
+    try {
+      return (favoritos || []).some(f => String(f.nome || '') === String(produto.nome || ''));
+    } catch (e) { return false; }
+  };
+
+  const toggleFavorito = (produto:any) => {
+    try {
+      const raw = localStorage.getItem('favoritos') || '[]';
+      const arr = JSON.parse(raw || '[]') || [];
+      const idx = arr.findIndex((p:any) => String(p.nome || '') === String(produto.nome || ''));
+      if (idx === -1) {
+        arr.unshift({ nome: produto.nome, descricao: produto.descricao, imagem: produto.imagem });
+      } else {
+        arr.splice(idx, 1);
+      }
+      localStorage.setItem('favoritos', JSON.stringify(arr));
+      try { window.dispatchEvent(new StorageEvent('storage', { key: 'favoritos', newValue: JSON.stringify(arr) } as any)); } catch (e) {}
+      setFavoritos(arr);
+    } catch (e) {
+      // ignore
+    }
+  };
 
   // load user's solicitacoes_troca and listen for updates
   React.useEffect(() => {
@@ -445,8 +536,24 @@ export default function RoupasScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.headerRow}>
-        <Image source={require('../../assets/images/logo.png')} style={styles.logo} resizeMode="contain" />
-        <Text style={styles.header}>ROUPAS DISPONIVEIS</Text>
+        <View style={styles.headerCenter}>
+          <Image source={require('../../assets/images/logo.png')} style={styles.logo} resizeMode="contain" />
+          <Text style={styles.header}>ROUPAS DISPONIVEIS</Text>
+        </View>
+        <View style={styles.headerRight}>
+          <TouchableOpacity style={styles.profileArea} onPress={() => { try { router.push('/configuracoes/perfil'); } catch (e) {} }}>
+            {profileImage ? (
+              // @ts-ignore
+              <Animated.Image source={{ uri: profileImage }} style={[styles.profileThumb, { opacity: profileOpacity.current } as any]} />
+            ) : (
+              <View style={styles.profileThumbPlaceholder}><Text style={{ color: '#fff', fontWeight: '800' }}>{(profileName || 'U').slice(0,1).toUpperCase()}</Text></View>
+            )}
+            <Text style={styles.profileName} numberOfLines={1}>{profileName || 'Meu Perfil'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.logoutUserBtn} onPress={handleLogoutUser} accessibilityLabel="Sair">
+            <Text style={styles.logoutUserText}>Sair</Text>
+          </TouchableOpacity>
+        </View>
       </View>
       {/* Banner atraente abaixo do título e acima dos cards */}
       <View style={styles.hero}>
@@ -522,10 +629,31 @@ export default function RoupasScreen() {
               styles.imagem,
               { width: Math.max(64, Math.round(cardWidth * 0.7)), height: Math.max(64, Math.round(cardWidth * 0.7)) }
             ]} />
+            {/* badge para produtos adicionados recentemente */}
+            {(produto.addedAt || produto.recent) ? (
+              <View style={{ position: 'absolute', top: 8, left: 8, backgroundColor: '#2E7D32', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10 }}>
+                <Text style={{ color: '#fff', fontWeight: '800', fontSize: 10 }}>Adicionado recentemente</Text>
+              </View>
+            ) : null}
             {/* destacar as partes do nome que casam com a busca */}
             <HighlightedText style={styles.nome} text={produto.nome} query={debouncedQuery} />
             <Text style={styles.descricao}>{produto.descricao}</Text>
-            <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 8, alignItems: 'center' }}>
+              <TouchableOpacity
+                style={styles.starBtnWrapper}
+                onPress={() => {
+                  toggleFavorito(produto);
+                  try {
+                    // set a flag so profile opens favorites view on navigation
+                    localStorage.setItem('__open_favoritos', '1');
+                    try { window.dispatchEvent(new StorageEvent('storage', { key: '__open_favoritos', newValue: '1' } as any)); } catch (e) {}
+                    router.push('/configuracoes/perfil');
+                  } catch (e) {}
+                }}
+              >
+                <Text style={[styles.starBtn, isFavorito(produto) ? styles.starBtnActive : null]}>{isFavorito(produto) ? '★' : '☆'}</Text>
+              </TouchableOpacity>
+
               <TouchableOpacity style={styles.trocaBtn} onPress={() => handleTroca(produto)}>
                 <Text style={styles.trocaBtnText}>Trocar</Text>
               </TouchableOpacity>
@@ -817,15 +945,23 @@ const styles = StyleSheet.create({
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     marginBottom: 12,
   },
+  headerCenter: { position: 'absolute', left: 0, right: 0, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' },
   logo: {
     width: 48,
     height: 48,
     marginRight: 8,
     marginBottom: 4,
   },
+  profileArea: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  profileThumb: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: '#fff', backgroundColor: '#eee' },
+  profileThumbPlaceholder: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#2E7D32', alignItems: 'center', justifyContent: 'center' },
+  profileName: { color: '#2E7D32', fontWeight: '800', marginLeft: 6, maxWidth: 120 },
+  headerRight: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center' },
+  logoutUserBtn: { marginLeft: 12, backgroundColor: '#B71C1C', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
+  logoutUserText: { color: '#fff', fontWeight: '700' },
   banner: {
     alignSelf: 'stretch',
     marginHorizontal: 12,
@@ -853,6 +989,9 @@ const styles = StyleSheet.create({
     marginTop: 6,
     textAlign: 'center',
   },
+  starBtnWrapper: { width: 40, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', borderWidth: 1, borderColor: '#eee' },
+  starBtn: { fontSize: 18, color: '#999', fontWeight: '800' },
+  starBtnActive: { color: '#FFD700' },
   bannerButton: {
     marginTop: 10,
     backgroundColor: '#2E7D32',

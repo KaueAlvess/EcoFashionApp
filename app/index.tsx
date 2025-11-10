@@ -124,6 +124,12 @@ export default function LoginScreen() { // Renomeado para LoginScreen
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F5F5F5', justifyContent: 'center' }}>
+      {/* Back button (top-left) to provide consistent navigation */}
+      <View style={{ position: 'absolute', top: Platform.OS === 'web' ? 12 : 6, left: 12, zIndex: 999 }} pointerEvents="box-none">
+        <TouchableOpacity onPress={() => { try { router.back(); } catch (e) { try { router.replace('/'); } catch {} } }} style={{ backgroundColor: 'rgba(0,0,0,0.6)', padding: 8, borderRadius: 8 }} accessibilityLabel="Voltar">
+          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>←</Text>
+        </TouchableOpacity>
+      </View>
       {toast ? <Toast message={toast.message} type={toast.type} /> : null}
       {/* Logo e título */}
       <View style={styles.logoContainer}>
