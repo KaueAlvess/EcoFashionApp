@@ -5,3 +5,4 @@ Integrantes do TCC:
 Nikollas Beneveni de Souza
 Yasmim Meira
 Gabrielly Goveia
+Kaue Alves da Rocha
