@@ -30,7 +30,7 @@ SELECT * FROM usuarios;
 SELECT * FROM doacoes;
 
 INSERT INTO usuarios (nome, email, senha, foto, trevos, role)
-VALUES ('admin', 'admin@ecofashion.local', '123', NULL, 0, 'admin')
+VALUES ('admin', 'adm@gmail.com', 'adm123', NULL, 0, 'admin')
 ON DUPLICATE KEY UPDATE
   nome = VALUES(nome),
   senha = VALUES(senha),

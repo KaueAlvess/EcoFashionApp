@@ -1,4 +1,4 @@
-import { Tabs, useRouter } from 'expo-router';
+import { Tabs, useRouter, useSegments } from 'expo-router';
 import React from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 // ...existing code...
@@ -12,6 +12,9 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const router = useRouter();
+  const segments = useSegments();
+  const lastSegment = segments && segments.length > 0 ? segments[segments.length - 1] : null;
+  const lastSegmentName = lastSegment ? String(lastSegment) : '';
   
   
 
@@ -23,6 +26,8 @@ export default function TabLayout() {
           <Text style={styles.backTxt}>←</Text>
         </TouchableOpacity>
       </View>
+
+      {/* logo button moved into TabBarBackground to live inside the navbar */}
 
     <Tabs
       screenOptions={{
@@ -113,4 +118,5 @@ const styles = StyleSheet.create({
   backWrap: { position: 'absolute', top: Platform.OS === 'web' ? 12 : 6, left: 12, zIndex: 999 },
   backBtn: { backgroundColor: 'rgba(0,0,0,0.6)', padding: 8, borderRadius: 8 },
   backTxt: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  
 });

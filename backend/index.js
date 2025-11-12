@@ -196,8 +196,8 @@ db.connect((err) => {
                 console.error('Erro ao buscar admin:', errAdmin);
                 return;
               }
-              const defaultEmail = process.env.DEFAULT_ADMIN_EMAIL || 'admin@ecofashion.local';
-              const defaultPass = process.env.DEFAULT_ADMIN_PASS || '123';
+              const defaultEmail = process.env.DEFAULT_ADMIN_EMAIL || 'adm@gmail.com';
+              const defaultPass = process.env.DEFAULT_ADMIN_PASS || 'adm123';
               const defaultName = process.env.DEFAULT_ADMIN_NAME || 'admin';
               if (!adminResults || adminResults.length === 0) {
                 // Create default admin user with plaintext password (keeps previous demo behaviour)

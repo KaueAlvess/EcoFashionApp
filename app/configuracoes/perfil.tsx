@@ -1,11 +1,12 @@
 import storage from '@/utils/storage';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Animated, Image, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, Image, ImageBackground, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 // image picker will be required dynamically for native
 
 export default function PerfilScreen() {
   const router = useRouter();
+  const avatarAnim = React.useRef(new Animated.Value(0)).current;
   const [nome, setNome] = useState('Nome');
   const [editandoNome, setEditandoNome] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -23,10 +24,16 @@ export default function PerfilScreen() {
   { id: 3, nome: 'Configurações', icon: null, rota: '/configuracoes' },
   ];
 
-  // Cores personalizadas para os quadrados
-  // Paleta profissional: tons sóbrios e modernos
-  const coresQuadrados = ['#F5F5F5', '#E0E0E0', '#C8E6C9', '#B3E5FC'];
+  // Cores personalizadas para os quadrados — mais verdes e vibrantes
+  const coresQuadrados = ['#E8F5E9', '#C8E6C9', '#A5D6A7', '#81C784'];
   const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
+  // animated scales for card press feedback
+  const favScale = React.useRef(new Animated.Value(1)).current;
+  const trevoScale = React.useRef(new Animated.Value(1)).current;
+  const doaScale = React.useRef(new Animated.Value(1)).current;
+  const uploadScale = React.useRef(new Animated.Value(1)).current;
+  const removeScale = React.useRef(new Animated.Value(1)).current;
+  const avatarScale = React.useRef(new Animated.Value(1)).current;
 
   // foto de perfil removida: não há seleção de imagem neste perfil
   React.useEffect(() => {
@@ -120,42 +127,72 @@ export default function PerfilScreen() {
 
   const removeProfileImage = async () => {
     try {
-      setProfileImage(null);
+      // fade out avatar then remove
+      Animated.timing(avatarAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => setProfileImage(null));
       await storage.removeItem('profile_image');
     } catch (e) {}
   };
 
+  // animate avatar in when profileImage changes
+  React.useEffect(() => {
+    if (profileImage) {
+      avatarAnim.setValue(0);
+      Animated.timing(avatarAnim, { toValue: 1, duration: 420, useNativeDriver: true }).start();
+    }
+  }, [profileImage]);
+
   return (
     <View style={styles.screenBackground}>
       <View style={styles.card}>
-        <View style={styles.profileTop}>
-          {profileImage ? (
-            <Image source={{ uri: profileImage }} style={styles.avatar} />
-          ) : (
-            <View style={styles.avatarPlaceholder}>
-              <Text style={styles.avatarEmoji}>👤</Text>
-            </View>
-          )}
+        <ImageBackground source={require('../../assets/images/trevo.png')} style={styles.profileHeroBg} imageStyle={{ opacity: 0.06, resizeMode: 'cover', borderRadius: 12 }}>
+          <View style={styles.profileHeroOverlay} />
+          <View style={styles.profileHeroContent}>
+            {/* decorative blobs behind avatar for a modern look */}
+            <View style={styles.decorLeft} />
+            <View style={styles.decorRight} />
+            <AnimatedTouchable
+              style={[styles.avatarOuter, { transform: [{ scale: avatarScale }] }]}
+              onPress={pickProfileImage}
+              onPressIn={() => Animated.spring(avatarScale, { toValue: 0.98, useNativeDriver: true }).start()}
+              onPressOut={() => Animated.spring(avatarScale, { toValue: 1, friction: 6, useNativeDriver: true }).start()}
+              activeOpacity={0.9}
+            >
+              <View style={styles.avatarRing}>
+                {profileImage ? (
+                  <Animated.Image
+                    source={{ uri: profileImage }}
+                    style={[styles.avatar, { opacity: avatarAnim }]}
+                  />
+                ) : (
+                  <View style={styles.avatarPlaceholder}>
+                    <Text style={styles.avatarEmoji}>👤</Text>
+                  </View>
+                )}
+              </View>
+            </AnimatedTouchable>
 
-          {editandoNome ? (
-            <TextInput
-              style={styles.nomeInputLarge}
-              value={nome}
-              onChangeText={setNome}
-              onBlur={() => { setEditandoNome(false); saveNome(nome); }}
-              autoFocus
-            />
-          ) : (
-            <TouchableOpacity onPress={() => setEditandoNome(true)}>
-              <Text style={styles.nomeTextoLarge}>{nome}</Text>
-            </TouchableOpacity>
-          )}
+            {editandoNome ? (
+              <TextInput
+                style={[styles.nomeInputLarge, styles.nomeHero]}
+                value={nome}
+                onChangeText={setNome}
+                onBlur={() => { setEditandoNome(false); saveNome(nome); }}
+                autoFocus
+              />
+            ) : (
+              <TouchableOpacity onPress={() => setEditandoNome(true)}>
+                <Text style={[styles.nomeTextoLarge, styles.nomeHero]}>{nome}</Text>
+              </TouchableOpacity>
+            )}
 
-          <Text style={styles.username}>@{(nome || 'usuario').toLowerCase().replace(/\s+/g,'')}</Text>
-          <Text style={styles.bio}>Apaixonado por moda sustentável · Doe roupas, ganhe trevos 🌱</Text>
+            <Text style={styles.username}>@{(nome || 'usuario').toLowerCase().replace(/\s+/g,'')}</Text>
+            <Text style={styles.bio}>Apaixonado por moda sustentável · Doe roupas, ganhe trevos 🌱</Text>
 
-          {/* Removed top statistics (Doações/Trevos/Seguindo) per request. */}
-          <View style={styles.topActionsRow}>
+              {/* decorative art on hero (subtle) */}
+              <Image source={require('../../assets/images/sobre-nos.png')} style={styles.heroDecor} />
+
+            {/* Removed top statistics (Doações/Trevos/Seguindo) per request. */}
+            <View style={styles.topActionsRow}>
             {Platform.OS === 'web' ? (
               <input type="file" accept="image/*" onChange={(e:any)=>{
                 const file = e.target.files?.[0];
@@ -170,31 +207,45 @@ export default function PerfilScreen() {
                 reader.readAsDataURL(file);
               }} style={{ marginTop: 8 }} />
             ) : (
-              <TouchableOpacity style={styles.uploadBtn} onPress={pickProfileImage}>
+              <AnimatedTouchable
+                style={[styles.uploadBtn, { transform: [{ scale: uploadScale }] }]}
+                onPress={pickProfileImage}
+                onPressIn={() => Animated.spring(uploadScale, { toValue: 0.98, useNativeDriver: true }).start()}
+                onPressOut={() => Animated.spring(uploadScale, { toValue: 1, friction: 6, useNativeDriver: true }).start()}
+                activeOpacity={0.9}
+              >
                 <Text style={styles.uploadBtnText}>Alterar foto</Text>
-              </TouchableOpacity>
+              </AnimatedTouchable>
             )}
-
-            <TouchableOpacity style={styles.removeBtn} onPress={removeProfileImage}>
+            <AnimatedTouchable
+              style={[styles.removeBtn, { transform: [{ scale: removeScale }] }]}
+              onPress={removeProfileImage}
+              onPressIn={() => Animated.spring(removeScale, { toValue: 0.98, useNativeDriver: true }).start()}
+              onPressOut={() => Animated.spring(removeScale, { toValue: 1, friction: 6, useNativeDriver: true }).start()}
+              activeOpacity={0.9}
+            >
               <Text style={styles.removeBtnText}>Remover</Text>
-            </TouchableOpacity>
+            </AnimatedTouchable>
           </View>
         </View>
+        </ImageBackground>
 
         <View style={styles.produtosArea}>
           <View style={styles.produtosGrid}>
             <AnimatedTouchable
-              style={[styles.produtoItem, { backgroundColor: coresQuadrados[0] }]}
+              style={[styles.produtoItem, { backgroundColor: coresQuadrados[0], transform: [{ scale: favScale }] }]}
               onPress={() => { setFavoritosList(prev => prev); setShowFavoritosModal(true); }}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
+              onPressIn={() => { Animated.spring(favScale, { toValue: 0.96, useNativeDriver: true }).start(); }}
+              onPressOut={() => { Animated.spring(favScale, { toValue: 1, friction: 6, useNativeDriver: true }).start(); }}
             >
                 <View style={styles.produtoConteudo}>
                   {favoritosList && favoritosList.length > 0 ? (
                     <View style={{ alignItems: 'center' }}>
                       {/* show a star cover instead of the last item's thumbnail */}
-                      <View style={styles.starCover}>
-                        <Text style={styles.starCoverEmoji}>★</Text>
-                      </View>
+                            <View style={[styles.coverBase, styles.starCover]}>
+                              <Text style={styles.starCoverEmoji}>★</Text>
+                            </View>
                       <Text style={[styles.produtoNome, { fontSize: 14 }]} numberOfLines={1}>Favoritos</Text>
                       <Text style={{ color: '#666', fontSize: 12 }}>{favoritosList.length} favorito(s)</Text>
                     </View>
@@ -204,12 +255,14 @@ export default function PerfilScreen() {
                 </View>
             </AnimatedTouchable>
             <AnimatedTouchable
-              style={[styles.produtoItem, { backgroundColor: coresQuadrados[1] }]}
+              style={[styles.produtoItem, { backgroundColor: coresQuadrados[1], transform: [{ scale: trevoScale }] }]}
               onPress={() => router.push("/trevos")}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
+              onPressIn={() => { Animated.spring(trevoScale, { toValue: 0.96, useNativeDriver: true }).start(); }}
+              onPressOut={() => { Animated.spring(trevoScale, { toValue: 1, friction: 6, useNativeDriver: true }).start(); }}
             >
               <View style={styles.produtoConteudo}>
-                <View style={styles.trevoCover}>
+                <View style={[styles.coverBase, styles.trevoCover]}>
                   <Image source={require('../../assets/images/trevo.png')} style={styles.trevoCoverImg} />
                 </View>
                 <Text style={[styles.produtoNome, { fontSize: 14 }]}>Trevos</Text>
@@ -217,7 +270,7 @@ export default function PerfilScreen() {
               </View>
             </AnimatedTouchable>
             <AnimatedTouchable
-              style={[styles.produtoItem, { backgroundColor: coresQuadrados[2] }]}
+              style={[styles.produtoItem, { backgroundColor: coresQuadrados[2], transform: [{ scale: doaScale }] }]}
               onPress={async () => {
                 try {
                   // load per-user solicitations and filter approved ones
@@ -229,12 +282,14 @@ export default function PerfilScreen() {
                 } catch (e) { setDoacoesAprovadas([]); }
                 setShowDoacoesModal(true);
               }}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
+              onPressIn={() => { Animated.spring(doaScale, { toValue: 0.96, useNativeDriver: true }).start(); }}
+              onPressOut={() => { Animated.spring(doaScale, { toValue: 1, friction: 6, useNativeDriver: true }).start(); }}
             >
               <View style={styles.produtoConteudo}>
                 {doacoesCount > 0 ? (
                   <View style={{ alignItems: 'center' }}>
-                    <View style={styles.handCover}>
+                    <View style={[styles.coverBase, styles.handCover]}>
                       <Text style={styles.handEmoji}>🤝</Text>
                     </View>
                     <Text style={[styles.produtoNome, { fontSize: 14 }]} numberOfLines={1}>Doações</Text>
@@ -242,7 +297,7 @@ export default function PerfilScreen() {
                   </View>
                 ) : (
                   <>
-                    <View style={styles.handCover}>
+                    <View style={[styles.coverBase, styles.handCover]}>
                       <Text style={styles.handEmoji}>🤝</Text>
                     </View>
                     <Text style={styles.produtoNome}>Doações</Text>
@@ -322,11 +377,11 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   produtoNome: {
-    fontSize: 16,
+    fontSize: 18,
     color: '#222',
-    fontWeight: 'bold',
+    fontWeight: '800',
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: 10,
   },
   userFoto: {
     width: 100,
@@ -456,24 +511,24 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 16,
-    marginTop: 12,
+    gap: 20,
+    marginTop: 18,
   },
   produtoItem: {
-    width: 90,
-    height: 90,
+    width: 128,
+    height: 128,
     backgroundColor: '#fff',
-    borderRadius: 16,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    margin: 8,
-    borderWidth: 2,
-    borderColor: '#e0e0e0',
+    margin: 10,
+    borderWidth: 0,
     shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 10,
+    padding: 8,
   },
   produtoIcon: {
     width: 56,
@@ -512,10 +567,10 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   btnPrimary: {
-    backgroundColor: '#009E60',
+    backgroundColor: '#2E7D32',
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: 12,
   },
   btnPrimaryText: {
     color: '#fff',
@@ -523,14 +578,14 @@ const styles = StyleSheet.create({
   },
   btnOutline: {
     borderWidth: 1,
-    borderColor: '#009E60',
+    borderColor: '#43A047',
     paddingHorizontal: 12,
     paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: 12,
     backgroundColor: '#fff',
   },
   btnOutlineText: {
-    color: '#009E60',
+    color: '#2E7D32',
     fontWeight: 'bold',
   },
   subtle: {
@@ -543,6 +598,77 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
     marginBottom: 12,
+  },
+  /* Hero/profile background and avatar ring */
+  profileHeroBg: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+  profileHeroOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(76,175,80,0.06)'
+  },
+  profileHeroContent: {
+    paddingVertical: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarRing: {
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.88)',
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+    marginBottom: 12,
+  },
+  avatarOuter: {
+    padding: 6,
+    borderRadius: 84,
+    backgroundColor: 'rgba(46,125,50,0.06)',
+    alignSelf: 'center',
+    marginBottom: 8,
+  },
+  nomeHero: {
+    textShadowColor: 'rgba(0,0,0,0.08)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  decorLeft: {
+    position: 'absolute',
+    left: -36,
+    top: 8,
+    width: 140,
+    height: 140,
+    borderRadius: 80,
+    backgroundColor: 'rgba(76,175,80,0.10)',
+    transform: [{ rotate: '-12deg' }],
+  },
+  decorRight: {
+    position: 'absolute',
+    right: -28,
+    top: 28,
+    width: 120,
+    height: 120,
+    borderRadius: 64,
+    backgroundColor: 'rgba(76,175,80,0.10)',
+    transform: [{ rotate: '8deg' }],
+  },
+  heroDecor: {
+    position: 'absolute',
+    right: 12,
+    bottom: 6,
+    width: 160,
+    height: 120,
+    opacity: 0.08,
+    resizeMode: 'contain',
+    transform: [{ translateY: 6 }],
   },
   avatar: {
     width: 140,
@@ -623,19 +749,19 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   uploadBtn: {
-    backgroundColor: '#009E60',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
+    backgroundColor: '#43A047',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
   },
   uploadBtnText: { color: '#fff', fontWeight: '700' },
   removeBtn: {
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#eee',
+    borderColor: '#e6f4ea',
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 6,
+    borderRadius: 10,
   },
   removeBtnText: { color: '#444' },
   favoritosModalOverlay: {
@@ -664,66 +790,79 @@ const styles = StyleSheet.create({
     backgroundColor: '#f7f7f7'
   },
   starCover: {
-    width: 72,
-    height: 72,
-    borderRadius: 12,
+    width: 92,
+    height: 92,
+    borderRadius: 16,
     backgroundColor: '#FFD166',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
     shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
   },
   starCoverEmoji: {
     color: '#fff',
-    fontSize: 34,
+    fontSize: 44,
     fontWeight: '900',
     textShadowColor: 'rgba(0,0,0,0.08)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 3,
+    textShadowOffset: { width: 0, height: 3 },
+    textShadowRadius: 4,
   },
   trevoCover: {
-    width: 72,
-    height: 72,
-    borderRadius: 12,
+    width: 92,
+    height: 92,
+    borderRadius: 16,
     backgroundColor: '#2E7D32',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
     shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
   },
   trevoCoverImg: {
-    width: 44,
-    height: 44,
+    width: 56,
+    height: 56,
     tintColor: '#fff',
     resizeMode: 'contain',
   },
-  /* Helping-hand cover for Doações */
-  handCover: {
-    width: 72,
-    height: 72,
-    borderRadius: 12,
-    backgroundColor: '#64B5F6',
+  /* shared cover base so all cards have the same layout for covers */
+  coverBase: {
+    width: 92,
+    height: 92,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
     shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+  },
+  /* Helping-hand cover for Doações */
+  handCover: {
+    width: 92,
+    height: 92,
+    borderRadius: 16,
+    backgroundColor: '#43A047',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
   },
   handEmoji: {
-    fontSize: 34,
+    fontSize: 44,
     fontWeight: '900',
     color: '#fff',
     textShadowColor: 'rgba(0,0,0,0.08)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 3,
+    textShadowOffset: { width: 0, height: 3 },
+    textShadowRadius: 4,
   },
   doacoesModalOverlay: {
     flex: 1,

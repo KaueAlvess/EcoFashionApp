@@ -47,22 +47,42 @@ export default function ConfiguracoesScreen() {
             style={styles.optionButton}
             onPress={() => router.push('/configuracoes/perfil')}
           >
-            <Image source={require('../../assets/images/mobile.png')} style={styles.optionIcon} />
-            <Text style={styles.optionText}>Perfil</Text>
+            <View style={[styles.optionIconWrap, { backgroundColor: '#fff9e6' }]}>
+              <Image source={require('../../assets/images/mobile.png')} style={styles.optionIcon} />
+            </View>
+            <View style={styles.optionTextWrap}>
+              <Text style={styles.optionText}>Perfil</Text>
+              <Text style={styles.optionSub}>Editar seu perfil e preferências</Text>
+            </View>
+            <Text style={styles.optionChevron}>›</Text>
           </TouchableOpacity>
+
           <TouchableOpacity
             style={styles.optionButton}
             onPress={() => router.push('/configuracoes/sobrenos')}
           >
-            <Image source={require('../../assets/images/bar.png')} style={styles.optionIcon} />
-            <Text style={styles.optionText}>Sobre Nós</Text>
+            <View style={[styles.optionIconWrap, { backgroundColor: '#e8fff3' }]}>
+              <Image source={require('../../assets/images/bar.png')} style={styles.optionIcon} />
+            </View>
+            <View style={styles.optionTextWrap}>
+              <Text style={styles.optionText}>Sobre Nós</Text>
+              <Text style={styles.optionSub}>Nossa história e missão</Text>
+            </View>
+            <Text style={styles.optionChevron}>›</Text>
           </TouchableOpacity>
+
           <TouchableOpacity
             style={styles.optionButton}
             onPress={() => setFeedbackModalVisible(true)}
           >
-            <Image source={require('../../assets/images/sobre-nos.png')} style={styles.optionIcon} />
-            <Text style={styles.optionText}>Feedbacks</Text>
+            <View style={[styles.optionIconWrap, { backgroundColor: '#e8f7ff' }]}>
+              <Image source={require('../../assets/images/sobre-nos.png')} style={styles.optionIcon} />
+            </View>
+            <View style={styles.optionTextWrap}>
+              <Text style={styles.optionText}>Feedbacks</Text>
+              <Text style={styles.optionSub}>Envie sugestões ou reporte problemas</Text>
+            </View>
+            <Text style={styles.optionChevron}>›</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -154,6 +174,32 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     marginRight: 12,
+  },
+  optionIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  optionTextWrap: {
+    flex: 1,
+  },
+  optionSub: {
+    fontSize: 13,
+    color: '#6b9b94',
+    marginTop: 4,
+  },
+  optionChevron: {
+    fontSize: 28,
+    color: '#c8e7e3',
+    marginLeft: 8,
   },
   optionText: {
     fontSize: 18,
