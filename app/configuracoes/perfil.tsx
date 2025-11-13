@@ -354,6 +354,7 @@ export default function PerfilScreen() {
                       <View style={{ marginLeft: 12, flex: 1 }}>
                         <Text style={{ fontWeight: '800' }}>{prod.nome || d.nome}</Text>
                         {d.adminMessage ? <Text style={{ color: '#666', marginTop: 4 }}>{d.adminMessage}</Text> : null}
+                                {d.trevosRecebidos ? <Text style={{ color: '#2E7D32', marginTop: 6, fontWeight: '800' }}>Trevos recebidos: {d.trevosRecebidos}</Text> : null}
                         <Text style={{ color: '#999', marginTop: 6, fontSize: 12 }}>{d.createdAt ? new Date(d.createdAt).toLocaleString() : ''}</Text>
                       </View>
                     </View>

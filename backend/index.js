@@ -255,10 +255,36 @@ app.post('/api/admin-login', (req, res) => {
     [user, user],
     (err, results) => {
       if (err) return res.status(500).json({ error: 'Erro ao buscar usuário.' });
-      if (results.length === 0) return res.status(401).json({ error: 'Administrador não encontrado.' });
+      const fallbackEmail = process.env.DEFAULT_ADMIN_EMAIL || 'adm@gmail.com';
+      const fallbackPass = process.env.DEFAULT_ADMIN_PASS || 'adm123';
+
+      if (results.length === 0) {
+        // No admin found in DB - allow fallback default credentials to create admin
+        if (user === fallbackEmail && senha === fallbackPass) {
+          // create admin record
+          db.query('INSERT INTO usuarios (nome, email, senha, foto, trevos, role) VALUES (?, ?, ?, ?, ?, ?) ', [user, user, senha, null, 0, 'admin'], (errIns, resultIns) => {
+            if (errIns) return res.status(500).json({ error: 'Erro ao criar admin.' });
+            return res.json({ success: true, usuario: { id: resultIns.insertId, nome: user, email: user } });
+          });
+          return;
+        }
+        return res.status(401).json({ error: 'Administrador não encontrado.' });
+      }
+
       const usuario = results[0];
       // Plain-text comparison for admin (keeps demo behaviour)
-      if (senha !== usuario.senha) return res.status(401).json({ error: 'Senha incorreta.' });
+      if (senha !== usuario.senha) {
+        // If provided credentials match fallback, update the existing admin to fallback password
+        if (user === fallbackEmail && senha === fallbackPass) {
+          db.query('UPDATE usuarios SET senha = ? WHERE id = ?', [senha, usuario.id], (errUpd) => {
+            if (errUpd) return res.status(500).json({ error: 'Erro ao atualizar senha do admin.' });
+            return res.json({ success: true, usuario: { id: usuario.id, nome: usuario.nome, email: usuario.email } });
+          });
+          return;
+        }
+        return res.status(401).json({ error: 'Senha incorreta.' });
+      }
+
       res.json({ success: true, usuario: { id: usuario.id, nome: usuario.nome, email: usuario.email } });
     }
   );

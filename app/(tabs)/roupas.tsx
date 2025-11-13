@@ -7,61 +7,73 @@ const produtos = [
     nome: 'Camiseta West Coast Choopers',
     descricao: 'Conforto e estilo no mesmo lugar',
     imagem: 'https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcSifv2Ge_x22O73douF4mHmVifsEJMz32uUUQ47YnWyEPGuuCV20EK9EVEPQ5rdIY6s-DuVX_ZA5kbGpwP7sF_j5wTOOQqVYMwgqZPRacauZTJRnMZw2yINsA',
+    custo: 4,
   },
   {
     nome: 'Moletom Cropped de Jeans',
     descricao: 'Moletom feminino',
     imagem: 'https://lojabeefancy.com.br/cdn/shop/files/jaqueta-streetwear-611736_1200x.png?v=1724351656',
+    custo: 5,
   },
   {
     nome: 'Calça Denim Preta',
     descricao: 'Calça preta masculina',
     imagem: 'https://img4.dhresource.com/webp/m/0x0/f3/albu/jc/l/19/e8ce0efc-a8b1-471f-9612-4bf617c2cf4b.jpg',
+    custo: 4,
   },
   {
     nome: 'Camiseta feminina cinza',
     descricao: 'Confortavel e basica',
     imagem: 'https://p.globalsources.com/IMAGES/PDT/B5418846505/Y2K-Camisa-top-de-manga-curta.jpg',
+    custo: 3,
   },
   {
     nome: 'Blusa masculina preta',
     descricao: 'Blusa preta masculina',
     imagem: 'https://down-br.img.susercontent.com/file/sg-11134201-22100-3g4v6a7aabjv89',
+    custo: 3,
   },
   {
     nome: 'Camiseta marrom chocolate',
     descricao: 'Camiseta confeccionada em algodão de gola em V e manga comprida.',
     imagem: 'https://static.zara.net/assets/public/dbe6/e35b/dbe641d4b5fa/753b7ba98790/01044628717-e1/01044628717-e1.jpg?ts=1727362866626&w=750',
+    custo: 2,
   },
   {
     nome: 'Camiseta esmeralda',
     descricao: 'Camisa confeccionada em tecido acetinado. Gola com lapela e manga comprida com acabamento em punho com pregas.',
     imagem: 'https://static.zara.net/assets/public/e9d3/e101/d50a454ea287/e07083d79b6d/03645194504-e1/03645194504-e1.jpg?ts=1724757386887&w=850',
+    custo: 4,
   },
   {
     nome: 'Camiseta verde claro',
     descricao: 'Camisa confeccionada em linho e viscose 48%. Gola com lapela e manga abaixo do cotovelo com punho. Fecho frontal com botões.',
     imagem: 'https://static.zara.net/assets/public/9537/108a/03ca496e9eb1/a0237551c131/07138089912-e1/07138089912-e1.jpg?ts=1732885643105&w=750',
+    custo: 3,
   },
   {
     nome: 'Calça de veludo verde',
     descricao: 'Calça de cintura alta e cós elástico. Parte inferior com acabamento em linha evasê.',
     imagem: 'https://static.zara.net/assets/public/6595/04e1/9dee4b1ab836/e54b41a587e9/07705617527-e1/07705617527-e1.jpg?ts=1741863059988&w=750',
+    custo: 6,
   },
   {
     nome: 'Calça verde',
     descricao: 'Calça confeccionada com linho e viscose 45%. Cintura alta com cós elástico. Bolsos laterais.',
     imagem: 'https://static.zara.net/assets/public/11af/573d/b0a34191871c/8623a0223f94/04088912500-e1/04088912500-e1.jpg?ts=1733143227582&w=850',
+    custo: 5,
   },
   {
     nome: 'Moletom Racionais',
     descricao: 'Moletom baseado no Grupo de rap Racionais, ela é feita de algodão.',
     imagem: 'https://i.pinimg.com/736x/43/0c/8c/430c8cb913f9c4940cdfbe370374a524.jpg',
+    custo: 4,
   },
   {
     nome: 'Casaco Bomber em Poliuretano',
     descricao: 'Jaqueta bomber de gola com lapela e manga comprida com punho e botão. Bolsos de debrum na frente. Bainha com elástico. Fecho frontal com zíper metálico.',
     imagem: 'https://static.zara.net/assets/public/a8d5/1357/3ff04fa3b5e1/bfc397028692/04391865717-e1/04391865717-e1.jpg?ts=1730642518057&w=750',
+    custo: 6,
   },
 ];
 
@@ -155,8 +167,10 @@ export default function RoupasScreen() {
         if (overrides && overrides[key]) return { ...b, ...overrides[key] };
         return b;
       }).filter((b: any) => !removed.includes(String(b.nome || '').trim()));
-      const combined = [...filteredCustom.filter((c:any) => !removed.includes(String(c.nome||'').trim())), ...baseWithOverrides];
-      return combined;
+  const combined = [...filteredCustom.filter((c:any) => !removed.includes(String(c.nome||'').trim())), ...baseWithOverrides];
+  // ensure every product has a custo (random between 2 and 6 if missing)
+  const withCosts = (combined || []).map((p:any) => ({ ...p, custo: typeof p.custo === 'number' ? p.custo : (Math.floor(Math.random() * 5) + 2) }));
+  return withCosts;
     } catch (e) {
       return produtos;
     }
@@ -215,7 +229,8 @@ export default function RoupasScreen() {
             return b;
           }).filter((b: any) => !removed.includes(String(b.nome || '').trim()));
           const combined = [...filteredCustom.filter((c:any) => !removed.includes(String(c.nome||'').trim())), ...baseWithOverrides];
-          setListaProdutos(combined);
+          const withCosts = (combined || []).map((p:any) => ({ ...p, custo: typeof p.custo === 'number' ? p.custo : (Math.floor(Math.random() * 5) + 2) }));
+          setListaProdutos(withCosts);
         } catch (e) {
           setListaProdutos(produtos);
         }
@@ -657,6 +672,10 @@ export default function RoupasScreen() {
               <TouchableOpacity style={styles.trocaBtn} onPress={() => handleTroca(produto)}>
                 <Text style={styles.trocaBtnText}>Trocar</Text>
               </TouchableOpacity>
+              <View style={styles.pricePill}>
+                <Image source={require('../../assets/images/trevo.png')} style={styles.priceIcon} />
+                <Text style={styles.priceNumber}>{(produto as any).custo ?? COST_PER_ITEM}</Text>
+              </View>
             </View>
           </View>
         ))}
@@ -682,7 +701,7 @@ export default function RoupasScreen() {
                   </>
                 )}
                 <Text style={{ marginTop: 12 }}>Você tem <Text style={{ fontWeight: 'bold' }}>{userTrevos}</Text> trevos.</Text>
-                <Text>Esta troca custa <Text style={{ fontWeight: 'bold' }}>{COST_PER_ITEM}</Text> trevos.</Text>
+                <Text>Esta troca custa <Text style={{ fontWeight: 'bold' }}>{selectedCost ?? COST_PER_ITEM}</Text> trevos.</Text>
                 <View style={{ flexDirection: 'row', marginTop: 16, gap: 12 }}>
                   <TouchableOpacity style={[styles.confirmBtn, { backgroundColor: '#2E7D32' }]} onPress={handleConfirmCheck}>
                     <Text style={styles.confirmBtnText}>Continuar</Text>
@@ -697,7 +716,7 @@ export default function RoupasScreen() {
             {flowStage === 'not_enough' && (
               <>
                 <Text style={{ marginVertical: 12 }}>Você não tem trevos suficientes para realizar essa troca.</Text>
-                <Text>Você tem <Text style={{ fontWeight: 'bold' }}>{userTrevos}</Text> e precisa de <Text style={{ fontWeight: 'bold' }}>{COST_PER_ITEM}</Text>.</Text>
+                <Text>Você tem <Text style={{ fontWeight: 'bold' }}>{userTrevos}</Text> e precisa de <Text style={{ fontWeight: 'bold' }}>{selectedCost ?? COST_PER_ITEM}</Text>.</Text>
                 <TouchableOpacity style={[styles.confirmBtn, { marginTop: 16 }]} onPress={fecharModal}>
                   <Text style={styles.confirmBtnText}>Fechar</Text>
                 </TouchableOpacity>
@@ -836,18 +855,19 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   card: {
-    backgroundColor: '#eaf9ee',
-    borderRadius: 12,
-    padding: 12,
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    padding: 14,
     alignItems: 'center',
-    marginBottom: 16,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: '#c6f7d0',
-    shadowColor: '#2E7D32',
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
+    marginBottom: 18,
+    // stronger elevation / shadow to make card pop forward
+    elevation: 10,
+    borderWidth: 0,
+    shadowColor: '#1b5e20',
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    transform: [{ translateZ: 0 } as any],
   },
   imagem: {
     width: 120,
@@ -883,6 +903,38 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 15,
+  },
+  precoText: {
+    marginTop: 6,
+    color: '#145c2e',
+    fontWeight: '800',
+    fontSize: 13,
+  },
+  pricePill: {
+    marginTop: 8,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e6f2ea',
+    shadowColor: '#2E7D32',
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  priceIcon: {
+    width: 18,
+    height: 18,
+    marginRight: 6,
+    tintColor: '#2E7D32'
+  },
+  priceNumber: {
+    color: '#145c2e',
+    fontWeight: '900',
+    fontSize: 14,
   },
   modalOverlay: {
     flex: 1,

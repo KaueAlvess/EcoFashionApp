@@ -352,9 +352,21 @@ export default function AdministracaoScreen() {
             const userKey = 'solicitacoes_doacao_usuario';
             const rawUser = localStorage.getItem(userKey) || '[]';
             const userArr = JSON.parse(rawUser || '[]') || [];
-            userArr.unshift({ id: Date.now(), originalSolicitId: original.id, usuario_id: original.usuario_id || 0, nome: original.nome, status: 'aprovado', adminMessage: 'Sua doação foi aprovada e adicionada ao catálogo.', createdAt: new Date().toISOString(), produto: newProd });
+            // include trevos awarded information if present
+            const trevosAwarded = original.trevosSolicitados || 0;
+            userArr.unshift({ id: Date.now(), originalSolicitId: original.id, usuario_id: original.usuario_id || 0, nome: original.nome, status: 'aprovado', adminMessage: 'Sua doação foi aprovada e adicionada ao catálogo.', trevosRecebidos: trevosAwarded, createdAt: new Date().toISOString(), produto: newProd });
             localStorage.setItem(userKey, JSON.stringify(userArr));
             try { window.dispatchEvent(new StorageEvent('storage', { key: userKey, newValue: JSON.stringify(userArr) } as any)); } catch (e) {}
+            // If the approved donation belongs to a user currently using this browser, credit their trevos balance immediately
+            try {
+              const currentId = localStorage.getItem('idUsuario');
+              if (currentId && String(currentId) === String(original.usuario_id || '')) {
+                const currentTrevos = parseInt(localStorage.getItem('trevos') || '0', 10) || 0;
+                const newTrevos = currentTrevos + (trevosAwarded || 0);
+                localStorage.setItem('trevos', String(newTrevos));
+                try { window.dispatchEvent(new StorageEvent('storage', { key: 'trevos', newValue: String(newTrevos) } as any)); } catch (e) {}
+              }
+            } catch (e) { /* ignore */ }
           } catch (e) {}
         } catch (e) {
           // ignore product add errors
@@ -636,6 +648,7 @@ export default function AdministracaoScreen() {
                 <Text style={styles.doacaoTitle}>{s.nome || s.descricao || 'Sem título'}</Text>
                 <Text style={styles.doacaoMeta}>Criado: {s.createdAt ? new Date(s.createdAt).toLocaleString() : ''}</Text>
                 <Text style={styles.doacaoMeta}>Status: {s.status || 'pendente'}</Text>
+                {s.trevosSolicitados ? <Text style={styles.doacaoMeta}>Trevos solicitados: {s.trevosSolicitados}</Text> : null}
                 {s.adminMessage ? <Text style={[styles.doacaoMeta, { marginTop: 6, color: '#444' }]}>Resposta ao usuário: {s.adminMessage}</Text> : null}
                 <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
                   <TouchableOpacity style={[styles.removeBtn, { backgroundColor: '#1976D2' }]} onPress={() => handleApproveSolicitacaoDoacao(s.id)}>

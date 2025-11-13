@@ -65,6 +65,23 @@ import TrevoTroca from '../../components/TrevoTroca';
                       fontSize: 16,
                       color: '#145c2e',
                     },
+                    /* single-line input styled to match other inputs: white bg, rounded corners and subtle shadow */
+                    smallInput: {
+                      backgroundColor: '#fff',
+                      borderRadius: 12,
+                      paddingHorizontal: 12,
+                      paddingVertical: 10,
+                      width: '100%',
+                      borderWidth: 1,
+                      borderColor: '#e6f4ea',
+                      fontSize: 16,
+                      color: '#145c2e',
+                      shadowColor: '#2E7D32',
+                      shadowOpacity: 0.06,
+                      shadowRadius: 6,
+                      shadowOffset: { width: 0, height: 2 },
+                      elevation: 2,
+                    },
                     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
                     modalContent: { backgroundColor: '#fff', borderRadius: 16, padding: 24, alignItems: 'center', width: 320, elevation: 4, position: 'relative' },
                     confirmModalContent: { backgroundColor: '#fff', borderRadius: 16, padding: 24, alignItems: 'center', width: 320, elevation: 4, position: 'relative' },
@@ -364,6 +381,7 @@ import TrevoTroca from '../../components/TrevoTroca';
                     const [destino, setDestino] = useState('');
                     const [tempoUso, setTempoUso] = useState('');
                     const [estado, setEstado] = useState('');
+                    const [requestedTrevos, setRequestedTrevos] = useState<number>(5);
                     const [tamanho, setTamanho] = useState('');
                     const [descricao, setDescricao] = useState('');
                     const [fotoRoupa, setFotoRoupa] = useState<string | null>(null);
@@ -600,7 +618,7 @@ import TrevoTroca from '../../components/TrevoTroca';
                                   placeholder="Nome da peça"
                                   value={newNome}
                                   onChangeText={setNewNome}
-                                  style={[styles.textArea, { height: 44, marginBottom: 8 }]}
+                                  style={[styles.smallInput, { height: 44, marginBottom: 8 }]}
                                 />
                                 {Platform.OS === 'web' ? (
                                   <>
@@ -640,6 +658,43 @@ import TrevoTroca from '../../components/TrevoTroca';
                                   numberOfLines={3}
                                   style={[styles.textArea, { height: 80, marginBottom: 12 }]}
                                 />
+                                {/* Estado da roupa (ruim/ok/bom/muito bom) */}
+                                <View style={{ width: '100%', marginBottom: 10 }}>
+                                  <Text style={{ color: '#145c2e', fontWeight: '700', marginBottom: 8 }}>Estado da roupa</Text>
+                                  <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                                    {estadoOptions.map(opt => (
+                                      <TouchableOpacity
+                                        key={opt.value}
+                                        onPress={() => setEstado(opt.value)}
+                                        style={[styles.optionBtn, estado === opt.value ? styles.selectedOption : {}, { marginRight: 8, marginBottom: 8 }]}
+                                      >
+                                        <Text style={{ color: estado === opt.value ? '#145c2e' : '#2E7D32', fontWeight: estado === opt.value ? '800' : '600' }}>{opt.label}</Text>
+                                      </TouchableOpacity>
+                                    ))}
+                                  </View>
+                                </View>
+                                {/* Solicited trevos selection */}
+                                <View style={{ width: '100%', marginBottom: 10 }}>
+                                  <Text style={{ color: '#145c2e', fontWeight: '700', marginBottom: 8 }}>Trevos solicitados</Text>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                                    <TouchableOpacity onPress={() => setRequestedTrevos(s => Math.max(1, s - 1))} style={[styles.optionBtn, { paddingHorizontal: 12 }]}> 
+                                      <Text style={{ fontWeight: '800' }}>-</Text>
+                                    </TouchableOpacity>
+                                    <View style={{ width: 18 }} />
+                                    <Text style={{ fontSize: 18, fontWeight: '900', color: '#145c2e' }}>{requestedTrevos}</Text>
+                                    <View style={{ width: 18 }} />
+                                    <TouchableOpacity onPress={() => setRequestedTrevos(s => Math.min(50, s + 1))} style={[styles.optionBtn, { paddingHorizontal: 12 }]}>
+                                      <Text style={{ fontWeight: '800' }}>+</Text>
+                                    </TouchableOpacity>
+                                  </View>
+                                  <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                                    {[1,2,3,5,6,7].map(n => (
+                                      <TouchableOpacity key={n} onPress={() => setRequestedTrevos(n)} style={[styles.optionBtn, requestedTrevos === n ? styles.selectedOption : {}, { marginRight: 8, marginBottom: 8 }]}>
+                                        <Text style={{ fontWeight: requestedTrevos === n ? '800' : '600', color: requestedTrevos === n ? '#145c2e' : '#2E7D32' }}>{n} trevos</Text>
+                                      </TouchableOpacity>
+                                    ))}
+                                  </View>
+                                </View>
                                 {/* New button: move locally to admin solicitations immediately (works offline) */}
                                 <TouchableOpacity
                                   style={[styles.optionBtn, { width: 160, backgroundColor: '#fff', borderWidth: 1, borderColor: '#2E7D32', marginBottom: 8 }]}
@@ -655,7 +710,7 @@ import TrevoTroca from '../../components/TrevoTroca';
                                       let arr = [] as any[];
                                       try { arr = JSON.parse(raw || '[]'); } catch (e) { arr = []; }
                                       const uid = (await storage.getItem('idUsuario')) || '0';
-                                      const solicit = { id: Date.now(), usuario_id: parseInt(uid as string, 10) || 0, nome: newNome, descricao: newDescricao, imagem: newImagem, createdAt: new Date().toISOString(), status: 'pendente' };
+                                      const solicit = { id: Date.now(), usuario_id: parseInt(uid as string, 10) || 0, nome: newNome, descricao: newDescricao, imagem: newImagem, estado: estado || 'ok', trevosSolicitados: requestedTrevos || 0, createdAt: new Date().toISOString(), status: 'pendente' };
                                       arr.unshift(solicit);
                                       await storage.setItem('solicitacoes_doacao', JSON.stringify(arr));
                                       setToast({ message: 'Movido para solicitações (Admin).', type: 'success' });
@@ -702,7 +757,7 @@ import TrevoTroca from '../../components/TrevoTroca';
                                             const raw2 = localStorage.getItem('solicitacoes_doacao') || '[]';
                                             const arr2 = JSON.parse(raw2 || '[]');
                                             const uid2 = await storage.getItem('idUsuario') || '0';
-                                            const solicit = { id: Date.now(), usuario_id: parseInt(uid2 as string, 10) || 0, nome: newNome, descricao: newDescricao, imagem: newImagem, createdAt: new Date().toISOString(), status: 'pendente' };
+                                            const solicit = { id: Date.now(), usuario_id: parseInt(uid2 as string, 10) || 0, nome: newNome, descricao: newDescricao, imagem: newImagem, estado: estado || 'ok', trevosSolicitados: requestedTrevos || 0, createdAt: new Date().toISOString(), status: 'pendente' };
                                             arr2.unshift(solicit);
                                             localStorage.setItem('solicitacoes_doacao', JSON.stringify(arr2));
                                             try { window.dispatchEvent(new StorageEvent('storage', { key: 'solicitacoes_doacao', newValue: JSON.stringify(arr2) } as any)); } catch (e) {}
@@ -717,9 +772,10 @@ import TrevoTroca from '../../components/TrevoTroca';
                                         formData.append('usuario_id', idUsuario as any);
                                         formData.append('descricao', newDescricao || newNome);
                                         formData.append('destino', 'bazar');
-                                        formData.append('tempo_uso', '0');
-                                        formData.append('estado', 'novo');
-                                        formData.append('tamanho', 'N/A');
+                                        formData.append('tempo_uso', tempoUso || '0');
+                                        formData.append('estado', estado || 'ok');
+                                        formData.append('trevosSolicitados', String(requestedTrevos || 0));
+                                        formData.append('tamanho', tamanho || 'N/A');
                                         const uri = newImagem as unknown as string;
                                         const filename = uri.split('/').pop() || `photo.jpg`;
                                         const match = filename.match(/\.([a-zA-Z0-9]+)$/);
@@ -742,7 +798,7 @@ import TrevoTroca from '../../components/TrevoTroca';
                                               const raw = localStorage.getItem('solicitacoes_doacao') || '[]';
                                               const arr = JSON.parse(raw || '[]');
                                               const uid = await storage.getItem('idUsuario') || '0';
-                                              const solicit = { id: Date.now(), usuario_id: parseInt(uid as string, 10) || 0, nome: newNome, descricao: newDescricao, imagem: newImagem, createdAt: new Date().toISOString(), status: 'pendente' };
+                                              const solicit = { id: Date.now(), usuario_id: parseInt(uid as string, 10) || 0, nome: newNome, descricao: newDescricao, imagem: newImagem, estado: estado || 'ok', trevosSolicitados: requestedTrevos || 0, createdAt: new Date().toISOString(), status: 'pendente' };
                                               arr.unshift(solicit);
                                               localStorage.setItem('solicitacoes_doacao', JSON.stringify(arr));
                                               try { window.dispatchEvent(new StorageEvent('storage', { key: 'solicitacoes_doacao', newValue: JSON.stringify(arr) } as any)); } catch (e) {}
