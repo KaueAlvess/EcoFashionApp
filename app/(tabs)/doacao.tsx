@@ -673,28 +673,7 @@ import TrevoTroca from '../../components/TrevoTroca';
                                     ))}
                                   </View>
                                 </View>
-                                {/* Solicited trevos selection */}
-                                <View style={{ width: '100%', marginBottom: 10 }}>
-                                  <Text style={{ color: '#145c2e', fontWeight: '700', marginBottom: 8 }}>Trevos solicitados</Text>
-                                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                                    <TouchableOpacity onPress={() => setRequestedTrevos(s => Math.max(1, s - 1))} style={[styles.optionBtn, { paddingHorizontal: 12 }]}> 
-                                      <Text style={{ fontWeight: '800' }}>-</Text>
-                                    </TouchableOpacity>
-                                    <View style={{ width: 18 }} />
-                                    <Text style={{ fontSize: 18, fontWeight: '900', color: '#145c2e' }}>{requestedTrevos}</Text>
-                                    <View style={{ width: 18 }} />
-                                    <TouchableOpacity onPress={() => setRequestedTrevos(s => Math.min(50, s + 1))} style={[styles.optionBtn, { paddingHorizontal: 12 }]}>
-                                      <Text style={{ fontWeight: '800' }}>+</Text>
-                                    </TouchableOpacity>
-                                  </View>
-                                  <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-                                    {[1,2,3,5,6,7].map(n => (
-                                      <TouchableOpacity key={n} onPress={() => setRequestedTrevos(n)} style={[styles.optionBtn, requestedTrevos === n ? styles.selectedOption : {}, { marginRight: 8, marginBottom: 8 }]}>
-                                        <Text style={{ fontWeight: requestedTrevos === n ? '800' : '600', color: requestedTrevos === n ? '#145c2e' : '#2E7D32' }}>{n} trevos</Text>
-                                      </TouchableOpacity>
-                                    ))}
-                                  </View>
-                                </View>
+                                {/* Trevos solicitados: opção removida — valor padrão utilizado internamente */}
                                 {/* New button: move locally to admin solicitations immediately (works offline) */}
                                 <TouchableOpacity
                                   style={[styles.optionBtn, { width: 160, backgroundColor: '#fff', borderWidth: 1, borderColor: '#2E7D32', marginBottom: 8 }]}

@@ -418,16 +418,20 @@ export default function RoupasScreen() {
   }, []);
 
   // Para facilitar testes locais, garantimos que o usuário possui 10 trevos
-  // Isto sobrescreve apenas o valor localStorage no carregamento desta tela.
+  // Para facilitar testes locais, definimos um saldo padrão (10) somente se a chave não existir.
   React.useEffect(() => {
     try {
-      localStorage.setItem('trevos', '10');
-    } catch (e) {}
-    setUserTrevos(10);
-    // dispatch storage event para outras abas/componentes
-    try {
-      window.dispatchEvent(new StorageEvent('storage', { key: 'trevos', newValue: '10' } as any));
-    } catch (e) {}
+      const existing = localStorage.getItem('trevos');
+      if (existing == null) {
+        localStorage.setItem('trevos', '10');
+        setUserTrevos(10);
+        try { window.dispatchEvent(new StorageEvent('storage', { key: 'trevos', newValue: '10' } as any)); } catch (e) {}
+      } else {
+        setUserTrevos(existing ? parseInt(existing, 10) : 0);
+      }
+    } catch (e) {
+      setUserTrevos(0);
+    }
   }, []);
 
   // Responsividade: recalcula colunas automaticamente conforme largura da tela
@@ -522,7 +526,19 @@ export default function RoupasScreen() {
           // decrementar trevos localmente e mostrar sucesso
           const novo = Math.max(0, userTrevos - custo);
           setUserTrevos(novo);
-          try { localStorage.setItem('trevos', String(novo)); } catch (e) {}
+          try {
+            localStorage.setItem('trevos', String(novo));
+            try { window.dispatchEvent(new StorageEvent('storage', { key: 'trevos', newValue: String(novo) } as any)); } catch (e) {}
+          } catch (e) {}
+          // registra movimentação de saída em trevos_movimentacoes para o portal
+          try {
+            const rawMov = localStorage.getItem('trevos_movimentacoes') || '[]';
+            const arrMov = JSON.parse(rawMov || '[]');
+            const mov = { id: Date.now(), type: 'saida', amount: custo, title: 'Troca realizada', source: produtoSelecionado?.nome || 'Troca', createdAt: Date.now() };
+            arrMov.push(mov);
+            localStorage.setItem('trevos_movimentacoes', JSON.stringify(arrMov));
+            try { window.dispatchEvent(new StorageEvent('storage', { key: 'trevos_movimentacoes', newValue: JSON.stringify(arrMov) } as any)); } catch (e) {}
+          } catch (e) {}
           // update the existing solicitação (currentSolicId) to include address and set status to 'pendente'
           try {
             const raw = localStorage.getItem('solicitacoes_troca') || '[]';

@@ -16,6 +16,12 @@ export default function PerfilScreen() {
   const [showDoacoesModal, setShowDoacoesModal] = useState(false);
   const [doacoesAprovadas, setDoacoesAprovadas] = useState<any[]>([]);
   const [doacoesCount, setDoacoesCount] = useState<number>(0);
+  // Notifications for approved donations (shown on profile entry)
+  const [notifs, setNotifs] = useState<any[]>([]);
+  const [notifVisible, setNotifVisible] = useState(false);
+  const [notifItem, setNotifItem] = useState<any | null>(null);
+  const notifScale = React.useRef(new Animated.Value(0.6)).current;
+  const notifOpacity = React.useRef(new Animated.Value(0)).current;
 
   // Produtos fictícios e rotas
   const produtos = [
@@ -29,8 +35,17 @@ export default function PerfilScreen() {
   const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
   // animated scales for card press feedback
   const favScale = React.useRef(new Animated.Value(1)).current;
+  // pulse animation for new-favorite highlight
+  const favPulse = React.useRef(new Animated.Value(1)).current;
+  // badge and glow animations for new favorite
+  const favBadge = React.useRef(new Animated.Value(0)).current; // 0 hidden -> 1 visible
+  const favGlow = React.useRef(new Animated.Value(0)).current; // 0 no glow -> 1 glow
   const trevoScale = React.useRef(new Animated.Value(1)).current;
   const doaScale = React.useRef(new Animated.Value(1)).current;
+  // Doação highlight animations (same behavior as Favoritos)
+  const doaPulse = React.useRef(new Animated.Value(1)).current;
+  const doaBadge = React.useRef(new Animated.Value(0)).current;
+  const doaGlow = React.useRef(new Animated.Value(0)).current;
   const uploadScale = React.useRef(new Animated.Value(1)).current;
   const removeScale = React.useRef(new Animated.Value(1)).current;
   const avatarScale = React.useRef(new Animated.Value(1)).current;
@@ -81,6 +96,59 @@ export default function PerfilScreen() {
     return () => { try { window.removeEventListener('storage', onStorage as any); } catch (e) {} };
   }, []);
 
+  // detect new favorites and trigger a small bounce/pulse on the Favoritos cover
+  const prevFavCount = React.useRef<number>(favoritosList.length);
+  React.useEffect(() => {
+    try {
+      const prev = prevFavCount.current || 0;
+      const now = Array.isArray(favoritosList) ? favoritosList.length : 0;
+      if (now > prev) {
+        // new favorite added -> pulse + show badge + brief glow
+        Animated.sequence([
+          Animated.parallel([
+            Animated.spring(favPulse, { toValue: 1.18, friction: 5, useNativeDriver: true }),
+            Animated.timing(favBadge, { toValue: 1, duration: 180, useNativeDriver: true }),
+            Animated.timing(favGlow, { toValue: 1, duration: 160, useNativeDriver: true }),
+          ]),
+          Animated.parallel([
+            Animated.spring(favPulse, { toValue: 1, friction: 6, useNativeDriver: true }),
+            Animated.timing(favBadge, { toValue: 0, duration: 280, delay: 160, useNativeDriver: true }),
+            Animated.timing(favGlow, { toValue: 0, duration: 240, useNativeDriver: true }),
+          ])
+        ]).start();
+      }
+      prevFavCount.current = now;
+    } catch (e) {
+      prevFavCount.current = Array.isArray(favoritosList) ? favoritosList.length : 0;
+    }
+  }, [favoritosList]);
+
+  // detect new approved donations count and animate Doações card similarly
+  const prevDoaCount = React.useRef<number>(doacoesCount);
+  React.useEffect(() => {
+    try {
+      const prev = prevDoaCount.current || 0;
+      const now = typeof doacoesCount === 'number' ? doacoesCount : 0;
+      if (now > prev) {
+        Animated.sequence([
+          Animated.parallel([
+            Animated.spring(doaPulse, { toValue: 1.18, friction: 5, useNativeDriver: true }),
+            Animated.timing(doaBadge, { toValue: 1, duration: 180, useNativeDriver: true }),
+            Animated.timing(doaGlow, { toValue: 1, duration: 160, useNativeDriver: true }),
+          ]),
+          Animated.parallel([
+            Animated.spring(doaPulse, { toValue: 1, friction: 6, useNativeDriver: true }),
+            Animated.timing(doaBadge, { toValue: 0, duration: 280, delay: 160, useNativeDriver: true }),
+            Animated.timing(doaGlow, { toValue: 0, duration: 240, useNativeDriver: true }),
+          ])
+        ]).start();
+      }
+      prevDoaCount.current = now;
+    } catch (e) {
+      prevDoaCount.current = typeof doacoesCount === 'number' ? doacoesCount : 0;
+    }
+  }, [doacoesCount]);
+
   // load count of approved donations for this user and update on storage changes
   React.useEffect(() => {
     const loadCount = async () => {
@@ -99,6 +167,109 @@ export default function PerfilScreen() {
     try { window.addEventListener('storage', onStorage as any); } catch (e) {}
     try { storage.addChangeListener && storage.addChangeListener((k:string)=> { if (k==='solicitacoes_doacao_usuario') loadCount(); }); } catch (e) {}
     return () => { try { window.removeEventListener('storage', onStorage as any); } catch (e) {} };
+  }, []);
+
+  // Load per-user notifications (solicitacoes_doacao_usuario) and show latest unseen approval
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const userId = (await storage.getItem('idUsuario')) || localStorage.getItem('idUsuario') || null;
+        const raw = localStorage.getItem('solicitacoes_doacao_usuario') || '[]';
+        const arr = JSON.parse(raw || '[]') || [];
+        const mine = (Array.isArray(arr) ? arr : []).filter((s:any) => String(s.usuario_id) === String(userId) && s.status === 'aprovado');
+        if (!mounted) return;
+        setNotifs(mine);
+
+        // find first not yet seen notification (we mark seen by setting seen: true)
+        const unseen = (mine || []).find((s:any) => !s.seen);
+        if (unseen) {
+          setNotifItem(unseen);
+          setNotifVisible(true);
+          // animate in
+          try {
+            notifOpacity.setValue(0);
+            notifScale.setValue(0.6);
+            Animated.parallel([
+              Animated.timing(notifOpacity, { toValue: 1, duration: 360, useNativeDriver: true }),
+              Animated.spring(notifScale, { toValue: 1, friction: 6, useNativeDriver: true }),
+            ]).start();
+          } catch (e) {}
+
+          // mark as seen in storage (so it won't show again)
+          try {
+            const updated = (Array.isArray(arr) ? arr : []).map((x:any) => x.id === unseen.id ? { ...x, seen: true } : x);
+            localStorage.setItem('solicitacoes_doacao_usuario', JSON.stringify(updated));
+            try { window.dispatchEvent(new StorageEvent('storage', { key: 'solicitacoes_doacao_usuario', newValue: JSON.stringify(updated) } as any)); } catch (e) {}
+          } catch (e) {}
+        }
+      } catch (e) {}
+    })();
+
+    const onStorage = (ev: StorageEvent) => {
+      if (!ev.key) return;
+      try {
+        if (ev.key === 'solicitacoes_doacao_usuario') {
+          const raw = localStorage.getItem('solicitacoes_doacao_usuario') || '[]';
+          const arr = JSON.parse(raw || '[]') || [];
+          const userId = localStorage.getItem('idUsuario') || null;
+          const mine = (Array.isArray(arr) ? arr : []).filter((s:any) => String(s.usuario_id) === String(userId) && s.status === 'aprovado');
+          setNotifs(mine);
+
+          // if there's an unseen notification, show it immediately (unless already visible)
+          const unseen = (mine || []).find((s:any) => !s.seen);
+          if (unseen && !notifVisible) {
+            setNotifItem(unseen);
+            setNotifVisible(true);
+            try {
+              notifOpacity.setValue(0);
+              notifScale.setValue(0.6);
+              Animated.parallel([
+                Animated.timing(notifOpacity, { toValue: 1, duration: 360, useNativeDriver: true }),
+                Animated.spring(notifScale, { toValue: 1, friction: 6, useNativeDriver: true }),
+              ]).start();
+            } catch (e) {}
+
+            try {
+              const updated = (Array.isArray(arr) ? arr : []).map((x:any) => x.id === unseen.id ? { ...x, seen: true } : x);
+              localStorage.setItem('solicitacoes_doacao_usuario', JSON.stringify(updated));
+              try { window.dispatchEvent(new StorageEvent('storage', { key: 'solicitacoes_doacao_usuario', newValue: JSON.stringify(updated) } as any)); } catch (e) {}
+            } catch (e) {}
+          }
+        } else if (ev.key === 'idUsuario' && ev.newValue) {
+          // login happened — check for pending unseen approval notifications for this user
+          const userId = ev.newValue || localStorage.getItem('idUsuario') || null;
+          try {
+            const raw = localStorage.getItem('solicitacoes_doacao_usuario') || '[]';
+            const arr = JSON.parse(raw || '[]') || [];
+            const mine = (Array.isArray(arr) ? arr : []).filter((s:any) => String(s.usuario_id) === String(userId) && s.status === 'aprovado');
+            setNotifs(mine);
+            const unseen = (mine || []).find((s:any) => !s.seen);
+            if (unseen && !notifVisible) {
+              setNotifItem(unseen);
+              setNotifVisible(true);
+              try {
+                notifOpacity.setValue(0);
+                notifScale.setValue(0.6);
+                Animated.parallel([
+                  Animated.timing(notifOpacity, { toValue: 1, duration: 360, useNativeDriver: true }),
+                  Animated.spring(notifScale, { toValue: 1, friction: 6, useNativeDriver: true }),
+                ]).start();
+              } catch (e) {}
+
+              try {
+                const updated = (Array.isArray(arr) ? arr : []).map((x:any) => x.id === unseen.id ? { ...x, seen: true } : x);
+                localStorage.setItem('solicitacoes_doacao_usuario', JSON.stringify(updated));
+                try { window.dispatchEvent(new StorageEvent('storage', { key: 'solicitacoes_doacao_usuario', newValue: JSON.stringify(updated) } as any)); } catch (e) {}
+              } catch (e) {}
+            }
+          } catch (e) {}
+        }
+      } catch (e) {}
+    };
+    try { window.addEventListener('storage', onStorage as any); } catch (e) {}
+
+    return () => { mounted = false; try { window.removeEventListener('storage', onStorage as any); } catch (e) {} };
   }, []);
 
   const saveNome = async (value: string) => {
@@ -239,20 +410,28 @@ export default function PerfilScreen() {
               onPressIn={() => { Animated.spring(favScale, { toValue: 0.96, useNativeDriver: true }).start(); }}
               onPressOut={() => { Animated.spring(favScale, { toValue: 1, friction: 6, useNativeDriver: true }).start(); }}
             >
-                <View style={styles.produtoConteudo}>
-                  {favoritosList && favoritosList.length > 0 ? (
-                    <View style={{ alignItems: 'center' }}>
-                      {/* show a star cover instead of the last item's thumbnail */}
-                            <View style={[styles.coverBase, styles.starCover]}>
-                              <Text style={styles.starCoverEmoji}>★</Text>
-                            </View>
-                      <Text style={[styles.produtoNome, { fontSize: 14 }]} numberOfLines={1}>Favoritos</Text>
-                      <Text style={{ color: '#666', fontSize: 12 }}>{favoritosList.length} favorito(s)</Text>
-                    </View>
-                  ) : (
-                    <Text style={styles.produtoNome}>Favoritos</Text>
-                  )}
-                </View>
+              <View style={styles.produtoConteudo}>
+                {/* Always render a cover so the Favoritos card matches the visual weight of the other cards */}
+                <Animated.View style={[styles.coverBase, favoritosList && favoritosList.length > 0 ? styles.starCover : styles.starCoverEmpty, { transform: [{ scale: favPulse }] }] }>
+                  {/* decorative overlays to make the cover feel lively */}
+                  <View style={styles.starDecor1} pointerEvents="none" />
+                  <View style={styles.starDecor2} pointerEvents="none" />
+                  <View style={styles.starDecor3} pointerEvents="none" />
+                  {/* glow overlay (animated) */}
+                  <Animated.View style={[styles.starGlowOverlay, { opacity: favGlow }]} pointerEvents="none" />
+                  {/* subtle fill decor for filled state */}
+                  {favoritosList && favoritosList.length > 0 ? <View style={styles.starFillDecor} pointerEvents="none" /> : null}
+                  <Text style={[styles.starCoverEmoji, favoritosList && favoritosList.length > 0 ? {} : { color: '#2E7D32' }]}>★</Text>
+                  {/* animated +1 badge */}
+                  <Animated.View style={[styles.favBadge, { opacity: favBadge, transform: [{ translateY: favBadge.interpolate({ inputRange: [0, 1], outputRange: [6, -6] }) }, { scale: favBadge.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) }] }]} pointerEvents="none">
+                    <Text style={styles.favBadgeText}>+1</Text>
+                  </Animated.View>
+                </Animated.View>
+                <Text style={[styles.produtoNome, { fontSize: 14 }]} numberOfLines={1}>Favoritos</Text>
+                {favoritosList && favoritosList.length > 0 ? (
+                  <Text style={{ color: '#666', fontSize: 12 }}>{favoritosList.length} favorito(s)</Text>
+                ) : null}
+              </View>
             </AnimatedTouchable>
             <AnimatedTouchable
               style={[styles.produtoItem, { backgroundColor: coresQuadrados[1], transform: [{ scale: trevoScale }] }]}
@@ -287,22 +466,18 @@ export default function PerfilScreen() {
               onPressOut={() => { Animated.spring(doaScale, { toValue: 1, friction: 6, useNativeDriver: true }).start(); }}
             >
               <View style={styles.produtoConteudo}>
-                {doacoesCount > 0 ? (
-                  <View style={{ alignItems: 'center' }}>
-                    <View style={[styles.coverBase, styles.handCover]}>
-                      <Text style={styles.handEmoji}>🤝</Text>
-                    </View>
-                    <Text style={[styles.produtoNome, { fontSize: 14 }]} numberOfLines={1}>Doações</Text>
-                    <Text style={{ color: '#666', fontSize: 12 }}>{doacoesCount} doação(ões)</Text>
-                  </View>
-                ) : (
-                  <>
-                    <View style={[styles.coverBase, styles.handCover]}>
-                      <Text style={styles.handEmoji}>🤝</Text>
-                    </View>
-                    <Text style={styles.produtoNome}>Doações</Text>
-                  </>
-                )}
+                <Animated.View style={[styles.coverBase, styles.handCover, { transform: [{ scale: doaPulse }] }] }>
+                  <View style={styles.starDecor1} pointerEvents="none" />
+                  <View style={styles.starDecor2} pointerEvents="none" />
+                  <Animated.View style={[styles.starGlowOverlay, { opacity: doaGlow }]} pointerEvents="none" />
+                  <View style={styles.starFillDecor} pointerEvents="none" />
+                  <Text style={styles.handEmoji}>🤝</Text>
+                  <Animated.View style={[styles.favBadge, { opacity: doaBadge, transform: [{ translateY: doaBadge.interpolate({ inputRange: [0, 1], outputRange: [6, -6] }) }, { scale: doaBadge.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) }] }]} pointerEvents="none">
+                    <Text style={styles.favBadgeText}>+1</Text>
+                  </Animated.View>
+                </Animated.View>
+                <Text style={[styles.produtoNome, { fontSize: 14 }]}>Doações</Text>
+                {doacoesCount > 0 ? <Text style={{ color: '#666', fontSize: 12 }}>{doacoesCount} doação(ões)</Text> : null}
               </View>
             </AnimatedTouchable>
           </View>
@@ -331,6 +506,32 @@ export default function PerfilScreen() {
                 ))}
               </ScrollView>
             </View>
+          </View>
+        </Modal>
+        {/* Notification popup for approved donation */}
+        <Modal visible={notifVisible} transparent animationType="none">
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.28)', justifyContent: 'center', alignItems: 'center' }}>
+            <Animated.View style={{ width: '86%', maxWidth: 420, backgroundColor: '#fff', borderRadius: 14, padding: 16, alignItems: 'center', transform: [{ scale: notifScale }], opacity: notifOpacity }}>
+              <View style={{ width: 68, height: 68, borderRadius: 34, backgroundColor: '#e9fcec', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
+                <Image source={require('../../assets/images/trevo.png')} style={{ width: 42, height: 42, tintColor: '#2E7D32' }} />
+              </View>
+              <Text style={{ fontSize: 18, fontWeight: '900', color: '#145c2e', textAlign: 'center' }}>Sua doação foi aprovada!</Text>
+              <Text style={{ color: '#444', marginTop: 6, textAlign: 'center' }}>{notifItem?.nome || 'Peça adicionada ao catálogo'}</Text>
+              <Text style={{ color: '#2E7D32', marginTop: 8, textAlign: 'center', fontWeight: '700' }}>A roupa já está disponível para troca.</Text>
+              {notifItem?.trevosRecebidos ? (
+                <View style={{ marginTop: 12, backgroundColor: '#eaf7ef', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20 }}>
+                  <Text style={{ color: '#145c2e', fontWeight: '900', fontSize: 20 }}>+{notifItem.trevosRecebidos} trevos</Text>
+                </View>
+              ) : null}
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+                <TouchableOpacity style={[styles.btnOutline, { paddingHorizontal: 16 }]} onPress={() => { setNotifVisible(false); setNotifItem(null); }}>
+                  <Text style={styles.btnOutlineText}>Fechar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.btnPrimary, { paddingHorizontal: 16 }]} onPress={() => { setNotifVisible(false); setShowDoacoesModal(true); }}>
+                  <Text style={styles.btnPrimaryText}>Ver minhas doações</Text>
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
           </View>
         </Modal>
         {/* Doações aprovadas modal (opened from Doações card) */}
@@ -794,7 +995,7 @@ const styles = StyleSheet.create({
     width: 92,
     height: 92,
     borderRadius: 16,
-    backgroundColor: '#FFD166',
+    backgroundColor: '#43A047',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
@@ -810,6 +1011,85 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.08)',
     textShadowOffset: { width: 0, height: 3 },
     textShadowRadius: 4,
+  },
+  /* empty-state variant for the Favoritos cover so it matches other cards visually */
+  starCoverEmpty: {
+    width: 92,
+    height: 92,
+    borderRadius: 16,
+    backgroundColor: '#E8F5E9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  /* decorative bubble overlays to make the cover look nicer */
+  starDecor1: {
+    position: 'absolute',
+    top: 8,
+    left: 10,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.18)'
+  },
+  starDecor2: {
+    position: 'absolute',
+    bottom: 12,
+    right: 12,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: 'rgba(255,255,255,0.12)'
+  },
+  starDecor3: {
+    position: 'absolute',
+    top: 18,
+    right: 6,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(46,125,50,0.06)'
+  },
+  /* optional subtle decorations for filled (green) cover */
+  starFillDecor: {
+    position: 'absolute',
+    left: 8,
+    bottom: 10,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(255,255,255,0.08)'
+  },
+  starGlowOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  favBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 8,
+    minWidth: 28,
+    height: 22,
+    paddingHorizontal: 6,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  favBadgeText: {
+    color: '#2E7D32',
+    fontWeight: '900',
+    fontSize: 12,
   },
   trevoCover: {
     width: 92,

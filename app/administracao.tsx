@@ -16,6 +16,10 @@ export default function AdministracaoScreen() {
   const [loadingTrocas, setLoadingTrocas] = React.useState(false);
   const [approveModalVisible, setApproveModalVisible] = React.useState(false);
   const [selectedTrocaForApprove, setSelectedTrocaForApprove] = React.useState<any | null>(null);
+  const [approveDoacaoModalVisible, setApproveDoacaoModalVisible] = React.useState(false);
+  const [approveDoacaoTarget, setApproveDoacaoTarget] = React.useState<any | null>(null);
+  const [approveTrevosAmount, setApproveTrevosAmount] = React.useState<number>(5);
+  const [valueTableModalVisible, setValueTableModalVisible] = React.useState(false);
   const [rejectModalVisible, setRejectModalVisible] = React.useState(false);
   const [rejectTargetId, setRejectTargetId] = React.useState<number | null>(null);
   const [rejectReason, setRejectReason] = React.useState('');
@@ -365,6 +369,15 @@ export default function AdministracaoScreen() {
                 const newTrevos = currentTrevos + (trevosAwarded || 0);
                 localStorage.setItem('trevos', String(newTrevos));
                 try { window.dispatchEvent(new StorageEvent('storage', { key: 'trevos', newValue: String(newTrevos) } as any)); } catch (e) {}
+                // registra movimentação de entrada para o portal de notificações
+                try {
+                  const rawMov = localStorage.getItem('trevos_movimentacoes') || '[]';
+                  const arrMov = JSON.parse(rawMov || '[]') || [];
+                  const mov = { id: Date.now(), type: 'entrada', amount: trevosAwarded || 0, title: 'Crédito por doação', source: original.nome || 'Doação', createdAt: Date.now() };
+                  arrMov.push(mov);
+                  localStorage.setItem('trevos_movimentacoes', JSON.stringify(arrMov));
+                  try { window.dispatchEvent(new StorageEvent('storage', { key: 'trevos_movimentacoes', newValue: JSON.stringify(arrMov) } as any)); } catch (e) {}
+                } catch (e) {}
               }
             } catch (e) { /* ignore */ }
           } catch (e) {}
@@ -533,6 +546,72 @@ export default function AdministracaoScreen() {
     setApproveModalVisible(true);
   };
 
+  const openApproveDoacaoModal = (solicit: any) => {
+    setApproveDoacaoTarget(solicit);
+    setApproveTrevosAmount(solicit?.trevosSolicitados || 5);
+    setApproveDoacaoModalVisible(true);
+  };
+
+  const handleConfirmApproveDoacao = (confirm = true) => {
+    try {
+      const original = approveDoacaoTarget;
+      if (!original) return;
+      const trevosAwarded = approveTrevosAmount || 0;
+
+      // add product to produtos_custom
+      try {
+        const customRaw = localStorage.getItem('produtos_custom') || '[]';
+        const custom = JSON.parse(customRaw || '[]') || [];
+        const newProd = { nome: original.nome, descricao: original.descricao || '', imagem: original.imagem || '', addedAt: new Date().toISOString(), recent: true };
+        custom.unshift(newProd);
+        localStorage.setItem('produtos_custom', JSON.stringify(custom));
+        try { window.dispatchEvent(new StorageEvent('storage', { key: 'produtos_custom', newValue: JSON.stringify(custom) } as any)); } catch (e) {}
+
+        // notify the user by adding an entry to a per-user solicitation list
+        try {
+          const userKey = 'solicitacoes_doacao_usuario';
+          const rawUser = localStorage.getItem(userKey) || '[]';
+          const userArr = JSON.parse(rawUser || '[]') || [];
+          userArr.unshift({ id: Date.now(), originalSolicitId: original.id, usuario_id: original.usuario_id || 0, nome: original.nome, status: 'aprovado', adminMessage: 'Sua doação foi aprovada e adicionada ao catálogo.', trevosRecebidos: trevosAwarded, createdAt: new Date().toISOString(), produto: newProd });
+          localStorage.setItem(userKey, JSON.stringify(userArr));
+          try { window.dispatchEvent(new StorageEvent('storage', { key: userKey, newValue: JSON.stringify(userArr) } as any)); } catch (e) {}
+
+          // If the approved donation belongs to a user currently using this browser, credit their trevos balance immediately
+          try {
+            const currentId = localStorage.getItem('idUsuario');
+            if (currentId && String(currentId) === String(original.usuario_id || '')) {
+              const currentTrevos = parseInt(localStorage.getItem('trevos') || '0', 10) || 0;
+              const newTrevos = currentTrevos + (trevosAwarded || 0);
+              localStorage.setItem('trevos', String(newTrevos));
+              try { window.dispatchEvent(new StorageEvent('storage', { key: 'trevos', newValue: String(newTrevos) } as any)); } catch (e) {}
+            }
+          } catch (e) { /* ignore */ }
+        } catch (e) {}
+      } catch (e) {
+        // ignore product add errors
+      }
+
+      // remove solicitation from list
+      try {
+        const raw = localStorage.getItem('solicitacoes_doacao') || '[]';
+        const arr = JSON.parse(raw || '[]') || [];
+        const remaining = (Array.isArray(arr) ? arr : []).filter((s:any) => s.id !== original.id);
+        localStorage.setItem('solicitacoes_doacao', JSON.stringify(remaining));
+        try { window.dispatchEvent(new StorageEvent('storage', { key: 'solicitacoes_doacao', newValue: JSON.stringify(remaining) } as any)); } catch (e) {}
+        setSolicitacoesDoacao(remaining);
+      } catch (e) {}
+
+      setToast({ message: 'Solicitação aprovada e adicionada às roupas', type: 'success' });
+      setTimeout(() => setToast(null), 1400);
+      reloadAdminProdutos();
+      setApproveDoacaoModalVisible(false);
+      setApproveDoacaoTarget(null);
+    } catch (e) {
+      setToast({ message: 'Erro ao aprovar solicitação', type: 'error' });
+      setTimeout(() => setToast(null), 1400);
+    }
+  };
+
   // generate next 30 days for quick pick
   React.useEffect(() => {
     const opts: string[] = [];
@@ -651,7 +730,7 @@ export default function AdministracaoScreen() {
                 {s.trevosSolicitados ? <Text style={styles.doacaoMeta}>Trevos solicitados: {s.trevosSolicitados}</Text> : null}
                 {s.adminMessage ? <Text style={[styles.doacaoMeta, { marginTop: 6, color: '#444' }]}>Resposta ao usuário: {s.adminMessage}</Text> : null}
                 <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-                  <TouchableOpacity style={[styles.removeBtn, { backgroundColor: '#1976D2' }]} onPress={() => handleApproveSolicitacaoDoacao(s.id)}>
+                  <TouchableOpacity style={[styles.removeBtn, { backgroundColor: '#1976D2' }]} onPress={() => openApproveDoacaoModal(s)}>
                     <Text style={{ color: '#fff', fontWeight: '700' }}>Aprovar</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={[styles.removeBtn, { backgroundColor: '#B71C1C' }]} onPress={() => openRejectModal(s.id)}>
@@ -878,6 +957,97 @@ export default function AdministracaoScreen() {
             )}
           </View>
         )}
+        {/* Modal: Aprovar Doação (escolher trevos) */}
+        <Modal visible={approveDoacaoModalVisible} transparent animationType="slide">
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.36)', justifyContent: 'center', alignItems: 'center' }}>
+            <View style={{ width: '92%', maxWidth: 420, backgroundColor: '#fff', borderRadius: 12, padding: 16 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={{ fontSize: 18, fontWeight: '800', color: '#2E7D32' }}>Aprovar Doação</Text>
+                <TouchableOpacity onPress={() => { setApproveDoacaoModalVisible(false); setApproveDoacaoTarget(null); }}>
+                  <Text style={{ fontSize: 20 }}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              {approveDoacaoTarget ? (
+                <>
+                  <View style={{ alignItems: 'center', marginTop: 12 }}>
+                    {approveDoacaoTarget.imagem ? <Image source={{ uri: approveDoacaoTarget.imagem }} style={{ width: 120, height: 120, borderRadius: 8 }} /> : null}
+                    <Text style={{ fontWeight: '800', marginTop: 8 }}>{approveDoacaoTarget.nome}</Text>
+                    <Text style={{ color: '#666', marginTop: 6 }}>{approveDoacaoTarget.descricao}</Text>
+                  </View>
+
+                  <View style={{ marginTop: 14 }}>
+                    <Text style={{ color: '#145c2e', fontWeight: '700', marginBottom: 8 }}>Quantos trevos recompensar?</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+                      <TouchableOpacity onPress={() => setApproveTrevosAmount(a => Math.max(0, (a || 0) - 1))} style={[styles.optionBtn, { paddingHorizontal: 12 }]}>
+                        <Text style={{ fontWeight: '800' }}>-</Text>
+                      </TouchableOpacity>
+                      <Text style={{ fontSize: 20, fontWeight: '900', color: '#145c2e' }}>{approveTrevosAmount}</Text>
+                      <TouchableOpacity onPress={() => setApproveTrevosAmount(a => Math.min(100, (a || 0) + 1))} style={[styles.optionBtn, { paddingHorizontal: 12 }]}>
+                        <Text style={{ fontWeight: '800' }}>+</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 10 }}>
+                      {[1,2,3,5,6,7,10].map(n => (
+                        <TouchableOpacity key={n} onPress={() => setApproveTrevosAmount(n)} style={[styles.optionBtn, approveTrevosAmount === n ? styles.selectedOption : {}, { marginRight: 8, marginBottom: 8 }]}>
+                          <Text style={{ fontWeight: approveTrevosAmount === n ? '800' : '600', color: approveTrevosAmount === n ? '#145c2e' : '#2E7D32' }}>{n} trevos</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                    <View style={{ marginTop: 8 }}>
+                      <TouchableOpacity style={[styles.optionBtn, { backgroundColor: '#fff', borderWidth: 1, borderColor: '#2E7D32', width: 200, alignSelf: 'center' }]} onPress={() => setValueTableModalVisible(true)}>
+                        <Text style={{ color: '#145c2e', fontWeight: '700', textAlign: 'center' }}>Acesso à tabela de valor</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12, marginTop: 14 }}>
+                    <TouchableOpacity style={[styles.modalBtn, styles.modalBtnPrimary]} onPress={() => handleConfirmApproveDoacao(true)}>
+                      <Text style={[styles.modalBtnText, { color: '#fff' }]}>Confirmar e Aprovar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.modalBtn} onPress={() => { setApproveDoacaoModalVisible(false); setApproveDoacaoTarget(null); }}>
+                      <Text style={styles.modalBtnText}>Cancelar</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : null}
+            </View>
+          </View>
+        </Modal>
+
+        {/* Modal: Tabela de valores (pequeno) */}
+        <Modal visible={valueTableModalVisible} transparent animationType="fade">
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.36)', justifyContent: 'center', alignItems: 'center' }}>
+            <View style={{ width: '86%', maxWidth: 480, backgroundColor: '#fff', borderRadius: 10, padding: 12 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={{ fontSize: 16, fontWeight: '800', color: '#2E7D32' }}>Tabela de Valores</Text>
+                <TouchableOpacity onPress={() => setValueTableModalVisible(false)}>
+                  <Text style={{ fontSize: 18 }}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={{ marginTop: 10 }}>
+                {Object.entries({
+                  'Camiseta (bom estado)': 5,
+                  'Moletom (bom estado)': 6,
+                  'Calça/Jeans (bom estado)': 6,
+                  'Casaco/Jaqueta (bom estado)': 7,
+                  'Vestido (bom estado)': 6,
+                  'Blusa (bom estado)': 5,
+                  'Camiseta (rasgada / ruim)': 2,
+                  'Peça pequena (acessório)': 1,
+                }).map(([label, val]) => (
+                  <View key={label} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f1f7f2' }}>
+                    <Text style={{ color: '#2f6b3a', fontWeight: '700' }}>{label}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#e9fcec', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20 }}>
+                      <Image source={require('../assets/images/trevo.png')} style={{ width: 16, height: 16, marginRight: 8, tintColor: '#2E7D32' }} />
+                      <Text style={{ fontWeight: '800', color: '#145c2e' }}>{val}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </View>
+        </Modal>
+
         {/* Modal: Aprovar troca e enviar relatório ao usuário */}
         <Modal visible={approveModalVisible} transparent animationType="fade">
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.32)', justifyContent: 'center', alignItems: 'center' }}>
@@ -1089,6 +1259,8 @@ const styles = StyleSheet.create({
   removedCard: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 10, padding: 10, marginBottom: 10, alignItems: 'center', elevation: 2, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } },
   removedImage: { width: 80, height: 64, borderRadius: 6, backgroundColor: '#f2f2f2' },
   restoreBtn: { marginTop: 8, backgroundColor: '#2E7D32', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, alignSelf: 'flex-start' },
+  optionBtn: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, backgroundColor: '#e8f8e8', borderWidth: 1, borderColor: '#43ea7a', marginRight: 8 },
+  selectedOption: { backgroundColor: '#c6f7d0', borderColor: '#2E7D32' },
   modalBtn: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 8, backgroundColor: '#f0f0f0' },
   modalBtnPrimary: { backgroundColor: '#2E7D32' },
   modalBtnText: { color: '#333', fontWeight: '700' },
