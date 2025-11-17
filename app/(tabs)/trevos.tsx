@@ -1,6 +1,8 @@
 import storage from '@/utils/storage';
+import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
-import { ActivityIndicator, Animated, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Animated, Easing, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Svg, { Defs, Mask, Rect, Image as SvgImage } from 'react-native-svg';
 
 export default function TrevosScreen() {
   const [trevosDisponiveis, setTrevosDisponiveis] = React.useState<number>(0);
@@ -106,6 +108,51 @@ export default function TrevosScreen() {
     }
   }, [showSuccess, successScale]);
 
+  // hero shimmer + pulse for number
+  const heroPulse = React.useRef(new Animated.Value(1)).current;
+  const shimmerX = React.useRef(new Animated.Value(-120)).current;
+  React.useEffect(() => {
+    // continuous shimmer animation
+    Animated.loop(
+      Animated.timing(shimmerX, { toValue: 240, duration: 2100, easing: Easing.linear, useNativeDriver: true }),
+    ).start();
+  }, [shimmerX]);
+
+  // rotate icon + orbit ring animations
+  const rotateIcon = React.useRef(new Animated.Value(0)).current;
+  const ringSpin = React.useRef(new Animated.Value(0)).current;
+  const ringPulse = React.useRef(new Animated.Value(1)).current;
+  React.useEffect(() => {
+    // continuous slow rotation of the icon
+    Animated.loop(
+      Animated.timing(rotateIcon, { toValue: 1, duration: 6000, easing: Easing.linear, useNativeDriver: true }),
+    ).start();
+    // ring spin (faster) and stronger pulse for emphasis
+    Animated.loop(
+      Animated.parallel([
+        Animated.timing(ringSpin, { toValue: 1, duration: 2600, easing: Easing.linear, useNativeDriver: true }),
+        Animated.loop(Animated.sequence([
+          Animated.timing(ringPulse, { toValue: 1.12, duration: 900, useNativeDriver: true }),
+          Animated.timing(ringPulse, { toValue: 1, duration: 900, useNativeDriver: true }),
+        ])),
+      ]),
+    ).start();
+  }, [rotateIcon, ringSpin, ringPulse]);
+
+  // pulse hero number when balance changes
+  const prevBalanceRef = React.useRef<number | null>(null);
+  React.useEffect(() => {
+    const prev = prevBalanceRef.current;
+    if (prev !== null && prev !== trevosDisponiveis) {
+      heroPulse.setValue(0.88);
+      Animated.spring(heroPulse, { toValue: 1, friction: 5, useNativeDriver: true }).start();
+      // small success flash
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 700);
+    }
+    prevBalanceRef.current = trevosDisponiveis;
+  }, [trevosDisponiveis, heroPulse]);
+
   const progressWidth = progressAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] });
 
   // realtime change badge state (shows +N / -N when balance changes)
@@ -146,6 +193,7 @@ export default function TrevosScreen() {
   const [transactions, setTransactions] = React.useState<any[]>([]);
   const cardScales = React.useRef<any>({}).current; // map index->Animated.Value
   const defaultScale = React.useRef(new Animated.Value(1)).current;
+  const cardEntrances = React.useRef<Animated.Value[]>([]).current;
 
   React.useEffect(() => {
     // entrance animation for portal
@@ -159,9 +207,18 @@ export default function TrevosScreen() {
         const raw = localStorage.getItem('trevos_movimentacoes') || '[]';
         const arr = JSON.parse(raw || '[]') || [];
         if (!mounted) return;
-        setTransactions(Array.isArray(arr) ? arr.slice().reverse() : []);
-        // ensure scales map exists
-        (Array.isArray(arr) ? arr : []).forEach((_:any, i:number) => { if (!cardScales[i]) cardScales[i] = new Animated.Value(1); });
+        const tx = Array.isArray(arr) ? arr.slice().reverse() : [];
+        if (!mounted) return;
+        setTransactions(tx);
+        // ensure scales map and entrance anims exist
+        tx.forEach((_:any, i:number) => {
+          if (!cardScales[i]) cardScales[i] = new Animated.Value(1);
+          if (!cardEntrances[i]) cardEntrances[i] = new Animated.Value(18);
+        });
+        // staggered entrance
+        setTimeout(() => {
+          Animated.stagger(80, cardEntrances.slice(0, tx.length).map(a => Animated.timing(a, { toValue: 0, duration: 420, easing: Easing.out(Easing.cubic), useNativeDriver: true }))).start();
+        }, 120);
       } catch (e) { if (!mounted) setTransactions([]); }
     };
     load();
@@ -176,8 +233,54 @@ export default function TrevosScreen() {
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
       <View style={styles.hero}>
-        <Image source={require('../../assets/images/trevo.png')} style={styles.heroIcon} />
-        <Text style={styles.heroNumber}>{trevosDisponiveis}</Text>
+        <View style={styles.heroIconWrap}>
+          {/** Coin gradient background using LinearGradient; animated as a rotating coin. */}
+          {(() => {
+            const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient as any);
+            return (
+              <>
+                <AnimatedLinearGradient
+                  colors={["#ffd966", "#ffb84d", "#e6a517"]}
+                  start={{ x: 0.2, y: 0 }}
+                  end={{ x: 0.8, y: 1 }}
+                  style={[
+                    styles.coin,
+                    {
+                      transform: [
+                        { rotate: rotateIcon.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) },
+                        { scale: ringPulse },
+                      ],
+                    },
+                  ]}
+                  pointerEvents="none"
+                >
+                  <View style={styles.coinRim} />
+                </AnimatedLinearGradient>
+
+                {/** SVG mask to create an engraved effect using the trevo image as mask */}
+                <Animated.View style={{ position: 'absolute', width: 88, height: 88, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: rotateIcon.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }} pointerEvents="none">
+                  <Svg width={88} height={88} viewBox="0 0 88 88">
+                    <Defs>
+                      <Mask id="trevoMask">
+                        <SvgImage href={require('../../assets/images/trevo.png')} x={16} y={16} width={56} height={56} preserveAspectRatio="xMidYMid slice" />
+                      </Mask>
+                    </Defs>
+                    <Rect x="0" y="0" width="88" height="88" fill="rgba(0,0,0,0.18)" mask="url(#trevoMask)" />
+                  </Svg>
+                </Animated.View>
+
+                <Animated.Image
+                  source={require('../../assets/images/trevo.png')}
+                  style={[
+                    styles.heroIconCoin,
+                    { transform: [{ rotate: rotateIcon.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] },
+                  ]}
+                />
+              </>
+            );
+          })()}
+        </View>
+        <Animated.Text style={[styles.heroNumber, { transform: [{ scale: heroPulse }] }]}>{trevosDisponiveis}</Animated.Text>
         <Text style={styles.heroSubtitle}>Seu saldo de trevos</Text>
         <View style={styles.progressContainer}>
           <View style={styles.progressBg}>
@@ -199,6 +302,8 @@ export default function TrevosScreen() {
             </View>
           </Animated.View>
         ) : null}
+        {/* shimmering overlay on hero */}
+        <Animated.View style={[styles.heroShimmer, { transform: [{ translateX: shimmerX }] }]} pointerEvents="none" />
       </View>
 
       <Text style={styles.sectionTitle}>Portal de notificações</Text>
@@ -212,7 +317,7 @@ export default function TrevosScreen() {
           ) : transactions.map((t, i) => (
             <AnimatedTouchable
               key={t.id || i}
-              style={[styles.notifyCard, { backgroundColor: t.type === 'entrada' ? '#eaf7ef' : '#fff4e6' }]}
+              style={[styles.notifyCard, { backgroundColor: t.type === 'entrada' ? '#eaf7ef' : '#fff4e6', transform: [{ translateY: cardEntrances[i] || 0 }] }]}
               activeOpacity={0.9}
               onPressIn={() => { Animated.spring(cardScales[i] || defaultScale, { toValue: 0.96, useNativeDriver: true }).start(); }}
               onPressOut={() => { Animated.spring(cardScales[i] || defaultScale, { toValue: 1, friction: 6, useNativeDriver: true }).start(); }}
@@ -255,6 +360,7 @@ const styles = StyleSheet.create({
   container: { paddingVertical: 24, paddingHorizontal: 16, backgroundColor: '#F5F5F5', alignItems: 'center' },
   hero: { width: '100%', alignItems: 'center', marginBottom: 18, paddingVertical: 24, backgroundColor: '#eaf7ef', borderRadius: 12 },
   heroIcon: { width: 84, height: 84, tintColor: '#2E7D32', marginBottom: 8 },
+  heroIconCoin: { width: 56, height: 56, tintColor: '#114b17', position: 'absolute' },
   heroNumber: { fontSize: 36, fontWeight: '900', color: '#145c2e' },
   sectionTitle: { fontSize: 18, fontWeight: '800', color: '#2E7D32', alignSelf: 'flex-start', marginLeft: 8, marginBottom: 8 },
   table: { width: '100%', backgroundColor: '#fff', borderRadius: 12, padding: 12, elevation: 3 },
@@ -290,4 +396,13 @@ const styles = StyleSheet.create({
   changeBadge: { position: 'absolute', left: 28, top: 14 },
   changeInner: { minWidth: 48, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#f0f5ef' },
   changeText: { fontWeight: '900', fontSize: 16 },
+  heroShimmer: { position: 'absolute', left: -120, top: 0, width: 120, height: '100%', backgroundColor: 'rgba(255,255,255,0.22)', transform: [{ rotate: '12deg' }] },
+  heroGlow: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, borderRadius: 12, backgroundColor: 'rgba(250,255,250,0.12)' },
+  heroNumberAnimated: { fontSize: 40, fontWeight: '900', color: '#145c2e' },
+  heroIconWrap: { width: 88, height: 88, alignItems: 'center', justifyContent: 'center' },
+  ring: { position: 'absolute', width: 112, height: 112, borderRadius: 56, alignItems: 'center', justifyContent: 'center', shadowColor: '#2E7D32', shadowOpacity: 0.22, shadowRadius: 12, elevation: 8 },
+  ringInner: { width: 84, height: 84, borderRadius: 42, backgroundColor: 'rgba(234,247,239,0.92)' },
+  coin: { position: 'absolute', width: 88, height: 88, borderRadius: 44, alignItems: 'center', justifyContent: 'center', shadowColor: '#b27500', shadowOpacity: 0.28, shadowRadius: 12, elevation: 10, borderWidth: 2, borderColor: 'rgba(0,0,0,0.08)' },
+  coinRim: { position: 'absolute', width: 70, height: 70, borderRadius: 35, borderWidth: 2, borderColor: 'rgba(0,0,0,0.06)', backgroundColor: 'transparent' },
+  
 });

@@ -315,6 +315,11 @@ export default function PerfilScreen() {
   return (
     <View style={styles.screenBackground}>
       <View style={styles.card}>
+          <View style={styles.headerRow}>
+            <TouchableOpacity onPress={() => router.push('/configuracoes')} style={styles.backButton} activeOpacity={0.85}>
+              <Text style={styles.backButtonText}>← Voltar</Text>
+            </TouchableOpacity>
+          </View>
         <ImageBackground source={require('../../assets/images/trevo.png')} style={styles.profileHeroBg} imageStyle={{ opacity: 0.06, resizeMode: 'cover', borderRadius: 12 }}>
           <View style={styles.profileHeroOverlay} />
           <View style={styles.profileHeroContent}>
@@ -365,18 +370,23 @@ export default function PerfilScreen() {
             {/* Removed top statistics (Doações/Trevos/Seguindo) per request. */}
             <View style={styles.topActionsRow}>
             {Platform.OS === 'web' ? (
-              <input type="file" accept="image/*" onChange={(e:any)=>{
-                const file = e.target.files?.[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = async () => {
-                  const result = reader.result as string;
-                  setProfileImage(result);
-                  try { await storage.setItem('profile_image', result); } catch (err) {}
-                  saveNome(nome);
-                };
-                reader.readAsDataURL(file);
-              }} style={{ marginTop: 8 }} />
+              <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: 8 }}>
+                <input id="profileFileInput" type="file" accept="image/*" style={{ display: 'none' }} onChange={(e:any)=>{
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = async () => {
+                    const result = reader.result as string;
+                    setProfileImage(result);
+                    try { await storage.setItem('profile_image', result); } catch (err) {}
+                    saveNome(nome);
+                  };
+                  reader.readAsDataURL(file);
+                }} />
+                <label htmlFor="profileFileInput" style={{ backgroundColor: '#43A047', color: '#fff', padding: '10px 14px', borderRadius: 10, cursor: 'pointer', fontWeight: '700', fontSize: 14 }}>
+                  Escolher arquivo
+                </label>
+              </div>
             ) : (
               <AnimatedTouchable
                 style={[styles.uploadBtn, { transform: [{ scale: uploadScale }] }]}
@@ -510,7 +520,7 @@ export default function PerfilScreen() {
         </Modal>
         {/* Notification popup for approved donation */}
         <Modal visible={notifVisible} transparent animationType="none">
-          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.28)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ flex: 1, backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center' }}>
             <Animated.View style={{ width: '86%', maxWidth: 420, backgroundColor: '#fff', borderRadius: 14, padding: 16, alignItems: 'center', transform: [{ scale: notifScale }], opacity: notifOpacity }}>
               <View style={{ width: 68, height: 68, borderRadius: 34, backgroundColor: '#e9fcec', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
                 <Image source={require('../../assets/images/trevo.png')} style={{ width: 42, height: 42, tintColor: '#2E7D32' }} />
@@ -800,6 +810,24 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
     marginBottom: 12,
+  },
+  headerRow: {
+    width: '100%',
+    marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+  },
+  backButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: 'transparent'
+  },
+  backButtonText: {
+    fontSize: 15,
+    color: '#2E7D32',
+    fontWeight: '800'
   },
   /* Hero/profile background and avatar ring */
   profileHeroBg: {
