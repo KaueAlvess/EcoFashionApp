@@ -7,73 +7,73 @@ const produtos = [
     nome: 'Camiseta West Coast Choopers',
     descricao: 'Conforto e estilo no mesmo lugar',
     imagem: 'https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcSifv2Ge_x22O73douF4mHmVifsEJMz32uUUQ47YnWyEPGuuCV20EK9EVEPQ5rdIY6s-DuVX_ZA5kbGpwP7sF_j5wTOOQqVYMwgqZPRacauZTJRnMZw2yINsA',
-    custo: 4,
+    custo: 11,
   },
   {
     nome: 'Moletom Cropped de Jeans',
     descricao: 'Moletom feminino',
     imagem: 'https://lojabeefancy.com.br/cdn/shop/files/jaqueta-streetwear-611736_1200x.png?v=1724351656',
-    custo: 5,
+    custo: 12,
   },
   {
     nome: 'Calça Denim Preta',
     descricao: 'Calça preta masculina',
     imagem: 'https://img4.dhresource.com/webp/m/0x0/f3/albu/jc/l/19/e8ce0efc-a8b1-471f-9612-4bf617c2cf4b.jpg',
-    custo: 4,
+    custo: 13,
   },
   {
     nome: 'Camiseta feminina cinza',
     descricao: 'Confortavel e basica',
     imagem: 'https://p.globalsources.com/IMAGES/PDT/B5418846505/Y2K-Camisa-top-de-manga-curta.jpg',
-    custo: 3,
+    custo: 14,
   },
   {
     nome: 'Blusa masculina preta',
     descricao: 'Blusa preta masculina',
     imagem: 'https://down-br.img.susercontent.com/file/sg-11134201-22100-3g4v6a7aabjv89',
-    custo: 3,
+    custo: 15,
   },
   {
     nome: 'Camiseta marrom chocolate',
     descricao: 'Camiseta confeccionada em algodão de gola em V e manga comprida.',
     imagem: 'https://static.zara.net/assets/public/dbe6/e35b/dbe641d4b5fa/753b7ba98790/01044628717-e1/01044628717-e1.jpg?ts=1727362866626&w=750',
-    custo: 2,
+    custo: 16,
   },
   {
     nome: 'Camiseta esmeralda',
     descricao: 'Camisa confeccionada em tecido acetinado. Gola com lapela e manga comprida com acabamento em punho com pregas.',
     imagem: 'https://static.zara.net/assets/public/e9d3/e101/d50a454ea287/e07083d79b6d/03645194504-e1/03645194504-e1.jpg?ts=1724757386887&w=850',
-    custo: 4,
+    custo: 17,
   },
   {
     nome: 'Camiseta verde claro',
     descricao: 'Camisa confeccionada em linho e viscose 48%. Gola com lapela e manga abaixo do cotovelo com punho. Fecho frontal com botões.',
     imagem: 'https://static.zara.net/assets/public/9537/108a/03ca496e9eb1/a0237551c131/07138089912-e1/07138089912-e1.jpg?ts=1732885643105&w=750',
-    custo: 3,
+    custo: 18,
   },
   {
     nome: 'Calça de veludo verde',
     descricao: 'Calça de cintura alta e cós elástico. Parte inferior com acabamento em linha evasê.',
     imagem: 'https://static.zara.net/assets/public/6595/04e1/9dee4b1ab836/e54b41a587e9/07705617527-e1/07705617527-e1.jpg?ts=1741863059988&w=750',
-    custo: 6,
+    custo: 19,
   },
   {
     nome: 'Calça verde',
     descricao: 'Calça confeccionada com linho e viscose 45%. Cintura alta com cós elástico. Bolsos laterais.',
     imagem: 'https://static.zara.net/assets/public/11af/573d/b0a34191871c/8623a0223f94/04088912500-e1/04088912500-e1.jpg?ts=1733143227582&w=850',
-    custo: 5,
+    custo: 20,
   },
   {
     nome: 'Moletom Racionais',
     descricao: 'Moletom baseado no Grupo de rap Racionais, ela é feita de algodão.',
     imagem: 'https://i.pinimg.com/736x/43/0c/8c/430c8cb913f9c4940cdfbe370374a524.jpg',
-    custo: 4,
+    custo: 21,
   },
   {
     nome: 'Casaco Bomber em Poliuretano',
     descricao: 'Jaqueta bomber de gola com lapela e manga comprida com punho e botão. Bolsos de debrum na frente. Bainha com elástico. Fecho frontal com zíper metálico.',
     imagem: 'https://static.zara.net/assets/public/a8d5/1357/3ff04fa3b5e1/bfc397028692/04391865717-e1/04391865717-e1.jpg?ts=1730642518057&w=750',
-    custo: 6,
+    custo: 22,
   },
 ];
 
@@ -116,7 +116,7 @@ export default function RoupasScreen() {
       return 0;
     }
   });
-  const COST_PER_ITEM = 3; // custo padrão por troca (pode ajustar)
+  const COST_PER_ITEM = 11; // custo padrão por troca (pode ajustar)
   const [selectedCost, setSelectedCost] = React.useState<number | null>(null);
 
   const [profileName, setProfileName] = React.useState<string | null>(null);
@@ -168,8 +168,16 @@ export default function RoupasScreen() {
         return b;
       }).filter((b: any) => !removed.includes(String(b.nome || '').trim()));
   const combined = [...filteredCustom.filter((c:any) => !removed.includes(String(c.nome||'').trim())), ...baseWithOverrides];
-  // ensure every product has a custo (random between 2 and 6 if missing)
-  const withCosts = (combined || []).map((p:any) => ({ ...p, custo: typeof p.custo === 'number' ? p.custo : (Math.floor(Math.random() * 5) + 2) }));
+  // ensure every product has a custo: keep existing >10 costs, otherwise assign a unique fixed cost >= 11
+  const usedCosts = new Set<number>();
+  (combined || []).forEach((p:any) => { if (typeof p.custo === 'number' && Number.isFinite(p.custo) && p.custo > 10) usedCosts.add(p.custo); });
+  let nextCost = 11;
+  const getNextUnique = () => {
+    while (usedCosts.has(nextCost)) nextCost++;
+    usedCosts.add(nextCost);
+    return nextCost;
+  };
+  const withCosts = (combined || []).map((p:any) => ({ ...p, custo: (typeof p.custo === 'number' && Number.isFinite(p.custo) && p.custo > 10) ? p.custo : getNextUnique() }));
   return withCosts;
     } catch (e) {
       return produtos;
@@ -229,8 +237,13 @@ export default function RoupasScreen() {
             return b;
           }).filter((b: any) => !removed.includes(String(b.nome || '').trim()));
           const combined = [...filteredCustom.filter((c:any) => !removed.includes(String(c.nome||'').trim())), ...baseWithOverrides];
-          const withCosts = (combined || []).map((p:any) => ({ ...p, custo: typeof p.custo === 'number' ? p.custo : (Math.floor(Math.random() * 5) + 2) }));
-          setListaProdutos(withCosts);
+          // ensure every product has a custo: keep existing >10 costs, otherwise assign a unique fixed cost >= 11
+          const usedCosts2 = new Set<number>();
+          (combined || []).forEach((p:any) => { if (typeof p.custo === 'number' && Number.isFinite(p.custo) && p.custo > 10) usedCosts2.add(p.custo); });
+          let nextCost2 = 11;
+          const getNextUnique2 = () => { while (usedCosts2.has(nextCost2)) nextCost2++; usedCosts2.add(nextCost2); return nextCost2; };
+          const withCosts2 = (combined || []).map((p:any) => ({ ...p, custo: (typeof p.custo === 'number' && Number.isFinite(p.custo) && p.custo > 10) ? p.custo : getNextUnique2() }));
+          setListaProdutos(withCosts2);
         } catch (e) {
           setListaProdutos(produtos);
         }
@@ -928,27 +941,27 @@ const styles = StyleSheet.create({
   },
   pricePill: {
     marginTop: 8,
-    backgroundColor: '#fff',
+    backgroundColor: '#2E7D32',
     borderRadius: 20,
     paddingVertical: 6,
     paddingHorizontal: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e6f2ea',
+    borderWidth: 0,
+    borderColor: 'transparent',
     shadowColor: '#2E7D32',
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.12,
     shadowRadius: 6,
-    elevation: 2,
+    elevation: 3,
   },
   priceIcon: {
     width: 18,
     height: 18,
     marginRight: 6,
-    tintColor: '#2E7D32'
+    tintColor: '#fff'
   },
   priceNumber: {
-    color: '#145c2e',
+    color: '#fff',
     fontWeight: '900',
     fontSize: 14,
   },

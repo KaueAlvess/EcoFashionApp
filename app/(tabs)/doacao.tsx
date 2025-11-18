@@ -1,9 +1,8 @@
 import storage from '@/utils/storage';
 import React, { useState } from 'react';
-import { Image, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, Image, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import Toast from '../../components/Toast';
-import TrevoTroca from '../../components/TrevoTroca';
 
                   const styles = StyleSheet.create({
                     container: { padding: 24, backgroundColor: '#F5F5F5', alignItems: 'center' },
@@ -390,6 +389,7 @@ import TrevoTroca from '../../components/TrevoTroca';
 
                     const selectedDestino = destinos.find(d => d.key === destino);
                     const [quantidadeTrevos, setQuantidadeTrevos] = React.useState(0);
+                    const trevoPulse = React.useRef(new Animated.Value(1)).current;
 
                     const openLinkInModal = (url: string) => {
                       setLinkModalUrl(url);
@@ -397,6 +397,7 @@ import TrevoTroca from '../../components/TrevoTroca';
                     };
 
                     React.useEffect(() => {
+                      let mounted = true;
                       (async () => {
                         try {
                           const email = await storage.getItem('email');
@@ -407,7 +408,7 @@ import TrevoTroca from '../../components/TrevoTroca';
                               body: JSON.stringify({ email, senha: '' })
                             });
                             const data = await res.json();
-                            if (data.success && data.usuario) {
+                            if (data.success && data.usuario && mounted) {
                               setQuantidadeTrevos(data.usuario.trevos || 0);
                             }
                           }
@@ -415,6 +416,32 @@ import TrevoTroca from '../../components/TrevoTroca';
                           // ignore
                         }
                       })();
+
+                      // initialize from storage quickly (if present) and subscribe to updates
+                      (async () => {
+                        try {
+                          const t = await storage.getItem('trevos');
+                          if (mounted && t) setQuantidadeTrevos(parseInt(t, 10));
+                        } catch (e) {}
+                      })();
+
+                      const handle = (key: string, newValue: string | null) => {
+                        if (key === 'trevos') {
+                          const val = newValue ? parseInt(newValue, 10) : 0;
+                          setQuantidadeTrevos(val);
+                          // small pulse animation when value changes
+                          Animated.sequence([
+                            Animated.timing(trevoPulse, { toValue: 1.12, duration: 220, useNativeDriver: true }),
+                            Animated.timing(trevoPulse, { toValue: 1, duration: 300, useNativeDriver: true }),
+                          ]).start();
+                        }
+                      };
+                      try { storage.addChangeListener && storage.addChangeListener(handle); } catch (e) {}
+
+                      return () => {
+                        mounted = false;
+                        try { storage.removeChangeListener && storage.removeChangeListener(handle); } catch (e) {}
+                      };
                     }, []);
 
                     const selecionarFoto = async () => {
@@ -497,7 +524,6 @@ import TrevoTroca from '../../components/TrevoTroca';
                         </View>
 
                         <View style={{ height: 18 }} />
-                        <TrevoTroca quantidade={quantidadeTrevos} />
 
                         <ScrollView contentContainerStyle={styles.container}>
                           <TouchableOpacity onPress={() => router.push('/explore')} activeOpacity={0.85} style={styles.headerCard}>

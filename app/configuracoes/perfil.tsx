@@ -50,6 +50,15 @@ export default function PerfilScreen() {
   const removeScale = React.useRef(new Animated.Value(1)).current;
   const avatarScale = React.useRef(new Animated.Value(1)).current;
 
+  const chatScale = React.useRef(new Animated.Value(1)).current;
+  const [chatModalVisible, setChatModalVisible] = useState(false);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const chatModalAnim = React.useRef(new Animated.Value(0)).current;
+  const [chatTyping, setChatTyping] = useState(false);
+  const chatScrollRef = React.useRef<ScrollView | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
   // foto de perfil removida: não há seleção de imagem neste perfil
   React.useEffect(() => {
     let mounted = true;
@@ -312,6 +321,73 @@ export default function PerfilScreen() {
     }
   }, [profileImage]);
 
+  const openChat = () => {
+    // load messages (already happens in effect) and animate modal in
+    setChatModalVisible(true);
+    chatModalAnim.setValue(0);
+    Animated.spring(chatModalAnim, { toValue: 1, friction: 8, useNativeDriver: true }).start(() => {
+      // after open, scroll to bottom if possible
+      setTimeout(() => { try { chatScrollRef.current && (chatScrollRef.current as any).scrollToEnd({ animated: true }); } catch (e) {} }, 180);
+    });
+  };
+
+  const closeChat = () => {
+    Animated.timing(chatModalAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => setChatModalVisible(false));
+  };
+
+  const sendChatMessage = (text: string) => {
+    if (!text || !text.trim()) return;
+    try {
+      const usuarioId = localStorage.getItem('idUsuario') || currentUserId || null;
+      const userName = localStorage.getItem('profile_name') || nome || 'Usuário';
+      const msg = { id: Date.now(), sender: 'user', usuario_id: usuarioId, userName, text: text.trim(), time: Date.now() };
+      // load existing global list, append
+      const raw = localStorage.getItem('chat_admin_messages') || '[]';
+      const arr = JSON.parse(raw || '[]') || [];
+      const updated = Array.isArray(arr) ? [...arr, msg] : [msg];
+      setChatMessages(updated.filter((m:any) => String(m.usuario_id) === String(usuarioId)));
+      try { localStorage.setItem('chat_admin_messages', JSON.stringify(updated)); try { window.dispatchEvent(new StorageEvent('storage', { key: 'chat_admin_messages', newValue: JSON.stringify(updated) } as any)); } catch (e) {} } catch (e) {}
+      setChatInput('');
+      // auto-scroll
+      setTimeout(() => { try { chatScrollRef.current && (chatScrollRef.current as any).scrollToEnd({ animated: true }); } catch (e) {} }, 80);
+    } catch (e) {}
+  };
+
+  // load persisted chat messages once and listen for external storage updates
+  React.useEffect(() => {
+    const load = () => {
+      try {
+        const raw = localStorage.getItem('chat_admin_messages') || '[]';
+        const arr = JSON.parse(raw || '[]') || [];
+        const usuarioId = localStorage.getItem('idUsuario') || currentUserId || null;
+        setCurrentUserId(usuarioId);
+        const conv = Array.isArray(arr) ? (usuarioId ? arr.filter((m:any) => String(m.usuario_id) === String(usuarioId)) : []) : [];
+        setChatMessages(conv);
+      } catch (e) { setChatMessages([]); }
+    };
+    load();
+    const onStorage = (ev: StorageEvent) => { if (!ev.key || ev.key === 'chat_admin_messages') load(); };
+    try { window.addEventListener('storage', onStorage as any); } catch (e) {}
+    return () => { try { window.removeEventListener('storage', onStorage as any); } catch (e) {} };
+  }, []);
+
+  // Animated message bubble component (local to perfil)
+  const MessageBubble: React.FC<{ m: any }> = ({ m }) => {
+    const anim = React.useRef(new Animated.Value(0)).current;
+    React.useEffect(() => { try { Animated.spring(anim, { toValue: 1, friction: 8, useNativeDriver: true }).start(); } catch (e) {} }, []);
+    const isUser = m.sender === 'user';
+    return (
+      <Animated.View style={{ opacity: anim, transform: [{ scale: anim.interpolate({ inputRange: [0,1], outputRange: [0.96, 1] }) }], marginBottom: 8 }}>
+        <View style={isUser ? styles.msgRowRight : styles.msgRowLeft}>
+          <View style={isUser ? styles.messageBubbleUser : styles.messageBubbleAdmin}>
+            <Text style={[styles.messageText, isUser ? { color: '#fff' } : {}]}>{m.text}</Text>
+            {m.time ? <Text style={styles.messageTime}>{new Date(m.time).toLocaleTimeString()}</Text> : null}
+          </View>
+        </View>
+      </Animated.View>
+    );
+  };
+
   return (
     <View style={styles.screenBackground}>
       <View style={styles.card}>
@@ -409,7 +485,59 @@ export default function PerfilScreen() {
             </AnimatedTouchable>
           </View>
         </View>
+        <View style={{ width: '100%', alignItems: 'center' }}>
+          <Text style={styles.chatTitle}>converse com o administrador para solucionar problemas</Text>
+            <AnimatedTouchable
+            style={[
+              styles.chatButton,
+              { transform: [{ scale: chatScale }], flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+            ]}
+            onPress={openChat}
+            onPressIn={() => Animated.spring(chatScale, { toValue: 0.98, useNativeDriver: true }).start()}
+            onPressOut={() => Animated.spring(chatScale, { toValue: 1, friction: 6, useNativeDriver: true }).start()}
+            activeOpacity={0.9}
+            accessibilityRole="button"
+          >
+            <Text style={styles.chatButtonIcon}>💬</Text>
+            <Text style={styles.chatButtonText}>Solucione!</Text>
+          </AnimatedTouchable>
+        </View>
         </ImageBackground>
+
+        {/* Chat modal */}
+        <Modal visible={chatModalVisible} transparent animationType="none">
+          <View style={styles.chatModalOverlay}>
+            <Animated.View style={[styles.chatModalContent, { opacity: chatModalAnim, transform: [{ translateY: chatModalAnim.interpolate({ inputRange: [0,1], outputRange: [220, 0] }) }] }]}>
+              <View style={styles.chatHeader}>
+                <View style={styles.chatHeaderLeft}>
+                  <View style={styles.chatHeaderAvatar}><Text style={{fontSize:18}}>🛠️</Text></View>
+                  <Text style={styles.chatHeaderTitle}>administrador</Text>
+                </View>
+                <TouchableOpacity onPress={closeChat} style={{ padding: 8 }}>
+                  <Text style={{ fontSize: 18, color: '#666' }}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <ScrollView ref={(r)=>{ chatScrollRef.current = r; }} style={styles.chatMessages} contentContainerStyle={{ padding: 12, paddingBottom: 18 }}>
+                {(chatMessages || []).map((m:any, i:number) => (
+                  <MessageBubble key={m.id || i} m={m} />
+                ))}
+                {chatTyping ? (
+                  <View style={styles.msgRowLeft}>
+                    <View style={styles.messageBubbleAdmin}>
+                      <Text style={styles.messageText}>digitando...</Text>
+                    </View>
+                  </View>
+                ) : null}
+              </ScrollView>
+              <View style={styles.chatInputRow}>
+                <TextInput value={chatInput} onChangeText={setChatInput} placeholder="Escreva sua mensagem..." style={styles.chatInput} multiline={false} />
+                <TouchableOpacity onPress={() => sendChatMessage(chatInput)} style={styles.chatSendBtn} accessibilityRole="button">
+                  <Text style={styles.chatSendText}>Enviar</Text>
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
+          </View>
+        </Modal>
 
         <View style={styles.produtosArea}>
           <View style={styles.produtosGrid}>
@@ -1199,4 +1327,66 @@ const styles = StyleSheet.create({
     backgroundColor: '#f7f7f7'
   },
   // Anotação: Estilos e layout modificados conforme print de referência
+  chatButton: {
+    alignSelf: 'stretch',
+    backgroundColor: '#fff',
+    paddingVertical: 14,
+    borderRadius: 18,
+    marginTop: 12,
+    marginHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 10,
+  },
+  chatButtonText: { color: '#2E7D32', fontWeight: '900', fontSize: 18 },
+  chatButtonIcon: { fontSize: 20, marginRight: 8, color: '#2E7D32' },
+  chatTitle: { color: '#145c2e', fontWeight: '700', marginBottom: 8, textAlign: 'center' },
+  /* Chat modal styles */
+  chatModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(2,10,6,0.36)',
+    justifyContent: 'flex-end',
+  },
+  chatModalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 6,
+    maxHeight: '78%',
+    minHeight: 260,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: -6 },
+    elevation: 12,
+  },
+  chatHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingBottom: 10,
+    paddingTop: 8,
+    backgroundColor: '#eaf7ef',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  chatHeaderLeft: { flexDirection: 'row', alignItems: 'center' },
+  chatHeaderAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginRight: 12, borderWidth: 2, borderColor: '#e6f4ef' },
+  chatHeaderTitle: { fontWeight: '900', color: '#145c2e', fontSize: 16 },
+  chatMessages: { flex: 1, backgroundColor: '#fff' },
+  msgRowLeft: { alignItems: 'flex-start', marginBottom: 10 },
+  msgRowRight: { alignItems: 'flex-end', marginBottom: 10 },
+  messageBubbleAdmin: { backgroundColor: '#f3f5f6', padding: 12, borderTopLeftRadius: 18, borderTopRightRadius: 18, borderBottomRightRadius: 18, borderBottomLeftRadius: 6, maxWidth: '82%', shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
+  messageBubbleUser: { backgroundColor: '#2E7D32', padding: 12, borderTopLeftRadius: 18, borderTopRightRadius: 18, borderBottomLeftRadius: 18, borderBottomRightRadius: 6, maxWidth: '82%', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 6 }, elevation: 10 },
+  messageText: { color: '#222' },
+  messageTime: { color: '#8b8b8b', fontSize: 11, marginTop: 6, textAlign: 'right' },
+  chatInputRow: { flexDirection: 'row', alignItems: 'center', padding: 12, borderTopWidth: 0, backgroundColor: '#fff' },
+  chatInput: { flex: 1, backgroundColor: '#f6f7f7', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 22, marginRight: 10, borderWidth: 1, borderColor: '#eef3ee' },
+  chatSendBtn: { width: 46, height: 46, borderRadius: 23, backgroundColor: '#2E7D32', alignItems: 'center', justifyContent: 'center', shadowColor: '#2E7D32', shadowOpacity: 0.18, shadowRadius: 8, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
+  chatSendText: { color: '#fff', fontWeight: '900' },
 });

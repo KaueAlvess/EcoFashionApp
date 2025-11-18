@@ -1,11 +1,12 @@
 import storage from '@/utils/storage';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, Image, ImageBackground, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Animated, Image, ImageBackground, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Toast from '../components/Toast';
 
 export default function AdministracaoScreen() {
   const [user, setUser] = React.useState('');
+  const [profileName, setProfileName] = React.useState('Administrador');
   const [pass, setPass] = React.useState('');
   const [toast, setToast] = React.useState<{ message: string; type?: 'success' | 'error' } | null>(null);
   const [isAdmin, setIsAdmin] = React.useState<boolean>(false);
@@ -35,8 +36,20 @@ export default function AdministracaoScreen() {
   const [editNome, setEditNome] = React.useState('');
   const [editDescricao, setEditDescricao] = React.useState('');
   const [editImagem, setEditImagem] = React.useState('');
+  const [priceEditModalVisible, setPriceEditModalVisible] = React.useState(false);
+  const [priceEditItem, setPriceEditItem] = React.useState<any | null>(null);
+  const [priceEditValue, setPriceEditValue] = React.useState<number | string>('');
+  const [priceEditCurrent, setPriceEditCurrent] = React.useState<number | null>(null);
   const [showRemoved, setShowRemoved] = React.useState(false);
   const [removedItems, setRemovedItems] = React.useState<Array<any>>([]);
+  // admin-side chat modal state
+  const [adminChatVisible, setAdminChatVisible] = React.useState(false);
+  const [adminChatMessages, setAdminChatMessages] = React.useState<any[]>([]);
+  const [adminChatInput, setAdminChatInput] = React.useState('');
+  const adminChatAnim = React.useRef(new Animated.Value(0)).current;
+  const adminChatScrollRef = React.useRef<ScrollView | null>(null);
+  const [selectedChatUserId, setSelectedChatUserId] = React.useState<string | null>(null);
+  const [conversationUsers, setConversationUsers] = React.useState<Array<{ id: string | null; name: string }>>([]);
   const router = useRouter();
   const [selectedSection, setSelectedSection] = React.useState<string | null>(null);
   const [solicitTab, setSolicTab] = React.useState<'doacoes' | 'trocas'>('doacoes');
@@ -52,8 +65,85 @@ export default function AdministracaoScreen() {
         // ignore
       }
     })();
+    // load profile name for header display
+    (async () => {
+      try {
+        const n = await storage.getItem('profile_name');
+        if (n) setProfileName(n);
+      } catch (e) {}
+    })();
     return () => { mounted = false; };
   }, []);
+
+  // load/persist admin chat messages and listen for external updates
+  React.useEffect(() => {
+    const load = () => {
+      try {
+        const raw = localStorage.getItem('chat_admin_messages') || '[]';
+        const arr = JSON.parse(raw || '[]') || [];
+        const list = Array.isArray(arr) ? arr : [];
+        setAdminChatMessages(list);
+        // compute conversation users
+        const usersMap: Record<string, string> = {};
+        list.forEach((m:any) => {
+          const id = m.usuario_id || null;
+          if (!usersMap[String(id)]) usersMap[String(id)] = m.userName || (`user:${String(id)}`);
+        });
+        const users = Object.keys(usersMap).filter(k => k !== 'null').map(k => ({ id: k, name: usersMap[k] }));
+        setConversationUsers(users);
+        if (!selectedChatUserId && users.length > 0) setSelectedChatUserId(users[0].id || null);
+      } catch (e) { setAdminChatMessages([]); }
+    };
+    load();
+    const onStorage = (ev: StorageEvent) => { if (!ev.key || ev.key === 'chat_admin_messages') load(); };
+    try { window.addEventListener('storage', onStorage as any); } catch (e) {}
+    return () => { try { window.removeEventListener('storage', onStorage as any); } catch (e) {} };
+  }, []);
+
+  const sendAdminMessage = (text: string) => {
+    if (!text || !text.trim()) return;
+    const usuarioId = selectedChatUserId || null;
+    const msg = { id: Date.now(), sender: 'admin', usuario_id: usuarioId, text: text.trim(), time: Date.now() };
+    const updated = [...adminChatMessages, msg];
+    setAdminChatMessages(updated);
+    try { localStorage.setItem('chat_admin_messages', JSON.stringify(updated)); try { window.dispatchEvent(new StorageEvent('storage', { key: 'chat_admin_messages', newValue: JSON.stringify(updated) } as any)); } catch (e) {} } catch (e) {}
+    setAdminChatInput('');
+    setTimeout(() => { try { adminChatScrollRef.current && (adminChatScrollRef.current as any).scrollToEnd({ animated: true }); } catch (e) {} }, 80);
+  };
+
+  const openAdminChat = () => {
+    setAdminChatVisible(true);
+    try { adminChatAnim.setValue(0); } catch (e) {}
+    try {
+      Animated.spring(adminChatAnim, { toValue: 1, friction: 8, useNativeDriver: true }).start(() => {
+        setTimeout(() => { try { adminChatScrollRef.current && (adminChatScrollRef.current as any).scrollToEnd({ animated: true }); } catch (e) {} }, 160);
+      });
+    } catch (e) {}
+    try { const ev = new StorageEvent('storage', { key: 'chat_admin_messages', newValue: localStorage.getItem('chat_admin_messages') } as any); window.dispatchEvent(ev as any); } catch (e) {}
+  };
+
+  // Message bubble component for admin modal (animated, shows time and avatar for user)
+  const AdminMessageBubble: React.FC<{ m: any }> = ({ m }) => {
+    const anim = React.useRef(new Animated.Value(0)).current;
+    React.useEffect(() => { try { Animated.spring(anim, { toValue: 1, friction: 8, useNativeDriver: true }).start(); } catch (e) {} }, []);
+    const isUser = m.sender === 'user';
+    const initials = (m.userName || '').split(' ').map((s:string)=>s[0]).slice(0,2).join('').toUpperCase() || '?';
+    return (
+      <Animated.View style={{ opacity: anim, transform: [{ translateY: anim.interpolate({ inputRange: [0,1], outputRange: [8,0] }) }], marginBottom: 10 }}>
+        <View style={{ flexDirection: isUser ? 'row' : 'row-reverse', alignItems: 'flex-end' }}>
+          {isUser ? (
+            <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#eaf7ef', alignItems: 'center', justifyContent: 'center', marginRight: 8 }}>
+              <Text style={{ color: '#145c2e', fontWeight: '900' }}>{initials}</Text>
+            </View>
+          ) : null}
+          <View style={isUser ? styles.messageBubbleUser : styles.messageBubbleAdmin}>
+            <Text style={isUser ? { color: '#fff' } : { color: '#222' }}>{m.text}</Text>
+            {m.time ? <Text style={styles.messageTimeAdmin}>{new Date(m.time).toLocaleTimeString()}</Text> : null}
+          </View>
+        </View>
+      </Animated.View>
+    );
+  };
 
   // fetch doacoes when admin view active
   React.useEffect(() => {
@@ -193,6 +283,33 @@ export default function AdministracaoScreen() {
     }, 80);
   };
 
+  // resolve custo exibido para um produto (considera overrides e custom)
+  const getDisplayCusto = React.useCallback((item: any) => {
+    try {
+      const key = String(item?.nome || '').trim();
+      // check overrides
+      try {
+        const overridesRaw = localStorage.getItem('produtos_overrides') || '{}';
+        const overrides = JSON.parse(overridesRaw || '{}') || {};
+        if (overrides && overrides[key] && (overrides[key].custo || overrides[key].custo === 0)) {
+          return Number(overrides[key].custo);
+        }
+      } catch (e) {}
+      // check custom list
+      try {
+        const customRaw = localStorage.getItem('produtos_custom') || '[]';
+        const custom = JSON.parse(customRaw || '[]') || [];
+        const found = (custom || []).find((c:any) => String(c.nome || '') === key && (c.custo || c.custo === 0));
+        if (found) return Number(found.custo);
+      } catch (e) {}
+      // fallback to item.custo or default 11
+      if (item && (item.custo || item.custo === 0)) return Number(item.custo);
+      return 11;
+    } catch (e) {
+      return 11;
+    }
+  }, []);
+
   const loadRemovedItems = () => {
     try {
       const removedNames = JSON.parse(localStorage.getItem('produtos_removed') || '[]') || [];
@@ -253,6 +370,98 @@ export default function AdministracaoScreen() {
     setEditImagem(item.imagem || '');
     setEditModalVisible(true);
   };
+
+  const openPriceEditor = (item: any) => {
+    setPriceEditItem(item);
+    // determine the current persisted custo (check overrides and custom first), then fallback to item.custo
+    try {
+      let current: any = null;
+      const key = String(item?.nome || '').trim();
+      // check overrides
+      try {
+        const overridesRaw = localStorage.getItem('produtos_overrides') || '{}';
+        const overrides = JSON.parse(overridesRaw || '{}') || {};
+        if (overrides && overrides[key] && (overrides[key].custo || overrides[key].custo === 0)) {
+          current = overrides[key].custo;
+        }
+      } catch (e) {}
+      // if still null, check custom list
+      if (current === null) {
+        try {
+          const customRaw = localStorage.getItem('produtos_custom') || '[]';
+          const custom = JSON.parse(customRaw || '[]') || [];
+          const found = (custom || []).find((c:any) => String(c.nome || '') === key && (c.custo || c.custo === 0));
+          if (found) current = found.custo;
+        } catch (e) {}
+      }
+      // fallback to provided item.custo
+      if (current === null && (item && (item.custo || item.custo === 0))) current = item.custo;
+      setPriceEditCurrent(typeof current === 'number' ? Number(current) : null);
+      setPriceEditValue(current ?? '');
+    } catch (e) {
+      setPriceEditCurrent(null);
+      setPriceEditValue(item && (item.custo || item.custo === 0) ? item.custo : '');
+    }
+    setPriceEditModalVisible(true);
+  };
+
+  const savePriceEdit = () => {
+    if (!priceEditItem) return;
+    const key = String(priceEditItem.nome || '').trim();
+    const parsed = typeof priceEditValue === 'string' ? parseInt(priceEditValue || '0', 10) : Number(priceEditValue || 0);
+    const custo = Number.isFinite(parsed) && parsed > 0 ? parsed : 11;
+    try {
+      if (priceEditItem.__source === 'custom') {
+        const customRaw = localStorage.getItem('produtos_custom') || '[]';
+        const custom = JSON.parse(customRaw || '[]') || [];
+        const updated = (Array.isArray(custom) ? custom : []).map((c:any) => (String(c.nome||'') === String(priceEditItem.nome||'') ? { ...c, custo } : c));
+        localStorage.setItem('produtos_custom', JSON.stringify(updated));
+      } else {
+        const overridesRaw = localStorage.getItem('produtos_overrides') || '{}';
+        const overrides = JSON.parse(overridesRaw || '{}') || {};
+        overrides[key] = { ...(overrides[key] || {}), custo };
+        localStorage.setItem('produtos_overrides', JSON.stringify(overrides));
+      }
+      try { window.dispatchEvent(new StorageEvent('storage', { key: 'produtos_overrides', newValue: localStorage.getItem('produtos_overrides') } as any)); } catch (e) {}
+      setToast({ message: 'Valor atualizado com sucesso', type: 'success' });
+      setTimeout(() => setToast(null), 1400);
+      setPriceEditModalVisible(false);
+      setPriceEditItem(null);
+      reloadAdminProdutos();
+    } catch (e) {
+      setToast({ message: 'Erro ao salvar valor', type: 'error' });
+      setTimeout(() => setToast(null), 1400);
+    }
+  };
+
+  // re-check persisted custo when modal opens (handles cases where openPriceEditor lookup missed)
+  React.useEffect(() => {
+    if (!priceEditModalVisible || !priceEditItem) return;
+    try {
+      const key = String(priceEditItem?.nome || '').trim();
+      let current: any = null;
+      try {
+        const overridesRaw = localStorage.getItem('produtos_overrides') || '{}';
+        const overrides = JSON.parse(overridesRaw || '{}') || {};
+        if (overrides && overrides[key] && (overrides[key].custo || overrides[key].custo === 0)) {
+          current = overrides[key].custo;
+        }
+      } catch (e) {}
+      if (current === null) {
+        try {
+          const customRaw = localStorage.getItem('produtos_custom') || '[]';
+          const custom = JSON.parse(customRaw || '[]') || [];
+          const found = (custom || []).find((c:any) => String(c.nome || '') === key && (c.custo || c.custo === 0));
+          if (found) current = found.custo;
+        } catch (e) {}
+      }
+      if (current === null && (priceEditItem && (priceEditItem.custo || priceEditItem.custo === 0))) current = priceEditItem.custo;
+      setPriceEditCurrent(typeof current === 'number' ? Number(current) : null);
+      setPriceEditValue(current ?? (priceEditItem && (priceEditItem.custo || priceEditItem.custo === 0) ? priceEditItem.custo : ''));
+    } catch (e) {
+      setPriceEditCurrent(null);
+    }
+  }, [priceEditModalVisible, priceEditItem]);
 
   const saveEditProduto = () => {
     if (!editItem) return;
@@ -790,8 +999,51 @@ export default function AdministracaoScreen() {
           <TouchableOpacity style={[styles.adminBtn, selectedSection === 'solicitacoes' ? styles.adminBtnActive : null]} onPress={() => setSelectedSection('solicitacoes')}>
             <Text style={[styles.adminBtnText, selectedSection === 'solicitacoes' ? styles.adminBtnTextActive : null]}>📦 Solicitações</Text>
           </TouchableOpacity>
+          <TouchableOpacity style={[styles.adminBtn]} onPress={() => openAdminChat()}>
+            <Text style={styles.adminBtnText}>💬 Solucionar</Text>
+          </TouchableOpacity>
         </View>
       </ImageBackground>
+
+      {/* Admin chat modal (Solucionar) */}
+      <Modal visible={adminChatVisible} transparent animationType="none">
+        <View style={styles.chatModalOverlay}>
+          <Animated.View style={[styles.chatModalContentAdmin, { opacity: adminChatAnim, transform: [{ translateY: adminChatAnim.interpolate({ inputRange: [0,1], outputRange: [220, 0] }) }] }]}>
+            <View style={styles.chatHeaderAdmin}>
+              <View>
+                <Text style={styles.chatHeaderTitleAdmin}>{(conversationUsers.find(u => String(u.id) === String(selectedChatUserId)) || { name: 'Usuário' }).name}</Text>
+                <Text style={{ color: '#666', fontSize: 12 }}>Conversa</Text>
+              </View>
+              <TouchableOpacity onPress={() => setAdminChatVisible(false)}>
+                <Text style={{ fontSize: 18, color: '#666' }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            {/* Conversation selector */}
+            <View style={{ paddingHorizontal: 12, paddingTop: 8 }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }} contentContainerStyle={{ gap: 8 }}>
+                {conversationUsers.length === 0 ? (
+                  <Text style={{ color: '#666' }}>Nenhuma conversa disponível</Text>
+                ) : conversationUsers.map((u) => (
+                  <TouchableOpacity key={String(u.id)} onPress={() => setSelectedChatUserId(String(u.id))} style={[{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, backgroundColor: selectedChatUserId === String(u.id) ? '#eaf7ef' : '#f3f3f3', marginRight: 8 }]}>
+                    <Text style={{ color: selectedChatUserId === String(u.id) ? '#145c2e' : '#333', fontWeight: '700' }}>{u.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+            <ScrollView ref={(r)=>{ adminChatScrollRef.current = r; }} style={styles.chatMessagesAdmin} contentContainerStyle={{ padding: 12, paddingBottom: 18 }}>
+              {adminChatMessages.filter((m:any) => String(m.usuario_id) === String(selectedChatUserId)).map((m:any, i:number) => (
+                <AdminMessageBubble key={m.id || i} m={m} />
+              ))}
+            </ScrollView>
+            <View style={styles.chatInputRowAdmin}>
+              <TextInput value={adminChatInput} onChangeText={setAdminChatInput} placeholder="Escreva sua resposta..." style={styles.chatInputAdmin} multiline={false} />
+              <TouchableOpacity onPress={() => sendAdminMessage(adminChatInput)} style={styles.chatSendBtnAdmin}>
+                <Text style={styles.chatSendText}>Enviar</Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        </View>
+      </Modal>
 
   {/* Small back button inside admin header (visible when authenticated) */}
   {/* It will be rendered as part of the header content so it's easy to reach */}
@@ -825,12 +1077,24 @@ export default function AdministracaoScreen() {
                       </View>
                       <Text style={styles.prodDesc} numberOfLines={3}>{p.descricao}</Text>
                       <View style={styles.actionRow}>
-                        <TouchableOpacity activeOpacity={0.8} style={[styles.actionBtn, { backgroundColor: '#B71C1C' }]} onPress={() => handleTirarProduto(p.nome)}>
-                          <Text style={styles.actionBtnText}>🗑️ Tirar</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity activeOpacity={0.8} style={[styles.actionBtn, { backgroundColor: '#2E7D32' }]} onPress={() => openEditProduto(p)}>
-                          <Text style={styles.actionBtnText}>✏️ Editar</Text>
-                        </TouchableOpacity>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <View style={styles.adminPricePill}>
+                            <Image source={require('../assets/images/trevo.png')} style={{ width: 16, height: 16, tintColor: '#fff', marginRight: 8 }} />
+                            <Text style={{ color: '#fff', fontWeight: '900' }}>{getDisplayCusto(p)}</Text>
+                          </View>
+                          <TouchableOpacity activeOpacity={0.85} style={styles.priceEditBtn} onPress={() => openPriceEditor(p)}>
+                            <Text style={{ color: '#145c2e', fontWeight: '800' }}>Editar valor</Text>
+                          </TouchableOpacity>
+                        </View>
+
+                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                          <TouchableOpacity activeOpacity={0.8} style={[styles.actionBtn, { backgroundColor: '#B71C1C' }]} onPress={() => handleTirarProduto(p.nome)}>
+                            <Text style={styles.actionBtnText}>🗑️ Tirar</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity activeOpacity={0.8} style={[styles.actionBtn, { backgroundColor: '#2E7D32' }]} onPress={() => openEditProduto(p)}>
+                            <Text style={styles.actionBtnText}>✏️ Editar</Text>
+                          </TouchableOpacity>
+                        </View>
                       </View>
                     </View>
                   </View>
@@ -878,6 +1142,40 @@ export default function AdministracaoScreen() {
                     </TouchableOpacity>
                     <TouchableOpacity style={[styles.modalBtn, styles.modalBtnPrimary]} onPress={saveEditProduto}>
                       <Text style={[styles.modalBtnText, { color: '#fff' }]}>Salvar</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            </Modal>
+            {/* Modal: Editar Valor da Peça */}
+            <Modal visible={priceEditModalVisible} transparent animationType="fade">
+              <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.36)', justifyContent: 'center', alignItems: 'center' }}>
+                <View style={{ width: '92%', maxWidth: 480, backgroundColor: '#fff', borderRadius: 12, padding: 16, alignItems: 'center' }}>
+                  <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: '#f3fff7', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                    <Image source={require('../assets/images/trevo.png')} style={{ width: 36, height: 36, tintColor: '#2E7D32' }} />
+                  </View>
+                  <Text style={{ fontSize: 18, fontWeight: '900', color: '#145c2e', marginBottom: 6 }}>{priceEditItem?.nome || 'Editar valor'}</Text>
+                  <Text style={{ fontWeight: '800', marginBottom: 6 }}>{(priceEditCurrent !== null) ? `Valor atual: ${priceEditCurrent} trevos` : (priceEditValue ? `Valor atual: ${priceEditValue} trevos` : 'Valor atual: —')}</Text>
+                  <Text style={{ color: '#666', marginBottom: 12, textAlign: 'center' }}>Defina um valor fixo em trevos para esta peça. Valores maiores deixam a peça mais premium.</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                    <TextInput value={String(priceEditValue)} onChangeText={t => setPriceEditValue(t)} keyboardType="numeric" style={[styles.input, { minWidth: 140, textAlign: 'center' }]} />
+                    <View style={{ backgroundColor: '#eaf7ef', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 }}>
+                      <Text style={{ color: '#145c2e', fontWeight: '800' }}>trevos</Text>
+                    </View>
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    {[11,13,15,18].map((val) => (
+                      <TouchableOpacity key={val} onPress={() => setPriceEditValue(String(val))} style={{ backgroundColor: priceEditValue == String(val) || priceEditValue == val ? '#e9fcec' : '#f3f3f3', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 }}>
+                        <Text style={{ color: '#145c2e', fontWeight: '800' }}>{val}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
+                    <TouchableOpacity style={styles.modalBtn} onPress={() => { setPriceEditModalVisible(false); setPriceEditItem(null); }}>
+                      <Text style={styles.modalBtnText}>Cancelar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.modalBtn, styles.modalBtnPrimary]} onPress={savePriceEdit}>
+                      <Text style={[styles.modalBtnText, { color: '#fff' }]}>Salvar valor</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -1174,6 +1472,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#444',
   },
+  adminPricePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2E7D32',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 18,
+    shadowColor: '#2E7D32',
+    shadowOpacity: 0.12,
+    elevation: 3,
+  },
+  priceEditBtn: {
+    backgroundColor: '#eaf7ef',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#dff6e6',
+  },
   forgotPassword: {
     alignSelf: 'flex-end',
     marginBottom: 10,
@@ -1264,4 +1581,25 @@ const styles = StyleSheet.create({
   modalBtn: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 8, backgroundColor: '#f0f0f0' },
   modalBtnPrimary: { backgroundColor: '#2E7D32' },
   modalBtnText: { color: '#333', fontWeight: '700' },
+  /* Admin 'Solucionar' button in header */
+  adminSolveName: { color: '#145c2e', fontWeight: '900', marginBottom: 6 },
+  chatButtonAdmin: { backgroundColor: '#fff', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
+  chatButtonIcon: { fontSize: 16, marginRight: 8, color: '#2E7D32' },
+  chatButtonText: { color: '#2E7D32', fontWeight: '900' },
+  /* Admin chat modal styles */
+  chatModalOverlay: { flex: 1, backgroundColor: 'rgba(2,10,6,0.36)', justifyContent: 'flex-end' },
+  chatModalContentAdmin: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 8, maxHeight: '78%', minHeight: 240, shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: -6 }, elevation: 12 },
+  chatHeaderAdmin: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingBottom: 10, paddingTop: 8, backgroundColor: '#eaf7ef', borderTopLeftRadius: 20, borderTopRightRadius: 20 },
+  chatHeaderTitleAdmin: { fontWeight: '900', color: '#145c2e', fontSize: 16 },
+  chatMessagesAdmin: { flex: 1, backgroundColor: '#fff' },
+  msgRowLeft: { alignItems: 'flex-start', marginBottom: 10 },
+  msgRowRight: { alignItems: 'flex-end', marginBottom: 10 },
+  messageBubbleAdmin: { backgroundColor: '#f3f5f6', padding: 12, borderTopLeftRadius: 18, borderTopRightRadius: 18, borderBottomRightRadius: 18, borderBottomLeftRadius: 6, maxWidth: '82%', shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
+  messageBubbleUser: { backgroundColor: '#2E7D32', padding: 12, borderTopLeftRadius: 18, borderTopRightRadius: 18, borderBottomLeftRadius: 18, borderBottomRightRadius: 6, maxWidth: '82%', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 6 }, elevation: 10 },
+  messageText: { color: '#222' },
+  messageTimeAdmin: { color: '#8b8b8b', fontSize: 11, marginTop: 6, textAlign: 'right' },
+  chatInputRowAdmin: { flexDirection: 'row', alignItems: 'center', padding: 12, borderTopWidth: 0, backgroundColor: '#fff' },
+  chatInputAdmin: { flex: 1, backgroundColor: '#f6f7f7', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 22, marginRight: 10, borderWidth: 1, borderColor: '#eef3ee' },
+  chatSendBtnAdmin: { width: 46, height: 46, borderRadius: 23, backgroundColor: '#2E7D32', alignItems: 'center', justifyContent: 'center', shadowColor: '#2E7D32', shadowOpacity: 0.18, shadowRadius: 8, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
+  chatSendText: { color: '#fff', fontWeight: '800' },
 });

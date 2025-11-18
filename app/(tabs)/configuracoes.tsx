@@ -1,13 +1,61 @@
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Image, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, Image, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Toast from '../../components/Toast';
-import TrevoTroca from '../../components/TrevoTroca';
 
 export default function ConfiguracoesScreen() {
   const router = useRouter();
 
   const [quantidadeTrevos, setQuantidadeTrevos] = React.useState(0);
+  const logoPulse = React.useRef(new Animated.Value(1)).current;
+  const sparkleA = React.useRef(new Animated.Value(0)).current;
+  const sparkleB = React.useRef(new Animated.Value(0)).current;
+  const sparkleC = React.useRef(new Animated.Value(0)).current;
+  const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
+  // three card animations (opacity + translateY)
+  const cardAnims = React.useRef([new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)]).current;
+  // hover scale animations for web (default 1)
+  const hoverAnims = React.useRef([new Animated.Value(1), new Animated.Value(1), new Animated.Value(1)]).current;
+  const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
+
+  const handleHoverIn = (i: number) => {
+    setHoveredIndex(i);
+    Animated.timing(hoverAnims[i], { toValue: 1.06, duration: 160, useNativeDriver: true }).start();
+  };
+
+  const handleHoverOut = (i: number) => {
+    setHoveredIndex((prev) => (prev === i ? null : prev));
+    Animated.timing(hoverAnims[i], { toValue: 1, duration: 160, useNativeDriver: true }).start();
+  };
+
+  // simple per-card palette (titleColor, subColor, iconBg, chevronColor)
+  const cardPalette = [
+    { titleColor: '#D97706', subColor: '#8A5B2B', iconBg: '#FFF3D7', chevronColor: '#F59E0B' },
+    { titleColor: '#0EA5A1', subColor: '#256D6B', iconBg: '#DFFAF7', chevronColor: '#06B6D4' },
+    { titleColor: '#2563EB', subColor: '#274E9A', iconBg: '#EAF4FF', chevronColor: '#3B82F6' },
+  ];
+
+  React.useEffect(() => {
+    // logo pulse loop
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(logoPulse, { toValue: 1.06, duration: 900, useNativeDriver: true }),
+        Animated.timing(logoPulse, { toValue: 1, duration: 900, useNativeDriver: true }),
+      ])
+    ).start();
+
+    // sparkles loop (staggered)
+    Animated.loop(
+      Animated.stagger(280, [
+        Animated.sequence([Animated.timing(sparkleA, { toValue: 1, duration: 450, useNativeDriver: true }), Animated.timing(sparkleA, { toValue: 0, duration: 450, useNativeDriver: true })]),
+        Animated.sequence([Animated.timing(sparkleB, { toValue: 1, duration: 500, useNativeDriver: true }), Animated.timing(sparkleB, { toValue: 0, duration: 500, useNativeDriver: true })]),
+        Animated.sequence([Animated.timing(sparkleC, { toValue: 1, duration: 420, useNativeDriver: true }), Animated.timing(sparkleC, { toValue: 0, duration: 420, useNativeDriver: true })]),
+      ])
+    ).start();
+
+    // entrance for cards (stagger)
+    Animated.stagger(120, cardAnims.map((v) => Animated.timing(v, { toValue: 1, duration: 480, useNativeDriver: true }))).start();
+  }, []);
   const [toast, setToast] = React.useState<{ message: string; type?: 'success' | 'error' } | null>(null);
   const [feedbackModalVisible, setFeedbackModalVisible] = React.useState(false);
   const [feedbackText, setFeedbackText] = React.useState('');
@@ -31,59 +79,105 @@ export default function ConfiguracoesScreen() {
   }, []);
   return (
     <View style={{ flex: 1 }}>
-      <TrevoTroca quantidade={quantidadeTrevos} />
       <View style={styles.container}>
-        <View style={styles.header}>
+        {/* animated sparkles and pulsing logo area */}
+        <View style={styles.headerDecorWrap} pointerEvents="none">
+          <Animated.View style={[styles.sparkle, { left: 28, top: 8, opacity: sparkleA, transform: [{ scale: sparkleA.interpolate({ inputRange: [0,1], outputRange: [0.6,1.2] }) }] }]} />
+          <Animated.View style={[styles.sparkle, { left: 120, top: 2, opacity: sparkleB, transform: [{ scale: sparkleB.interpolate({ inputRange: [0,1], outputRange: [0.6,1.2] }) }], width: 10, height: 10 }]} />
+          <Animated.View style={[styles.sparkle, { left: 62, top: 44, opacity: sparkleC, transform: [{ scale: sparkleC.interpolate({ inputRange: [0,1], outputRange: [0.6,1.2] }) }], backgroundColor: '#fffef0' }]} />
+        </View>
+        <Animated.View style={[styles.header, { transform: [{ scale: logoPulse }] }]}> 
+          <View style={styles.header}>
           <Image
             source={require('../../assets/images/logo.png')}
             style={styles.logo}
             resizeMode="contain"
           />
           <Text style={styles.title}>Configurações</Text>
-        </View>
+          </View>
+        </Animated.View>
 
         <View style={styles.options}>
-          <TouchableOpacity
-            style={styles.optionButton}
+          <AnimatedTouchable
+            onMouseEnter={() => handleHoverIn(0)}
+            onMouseLeave={() => handleHoverOut(0)}
+            style={[
+              styles.optionButton,
+              {
+                opacity: cardAnims[0],
+                transform: [
+                  { translateY: cardAnims[0].interpolate({ inputRange: [0,1], outputRange: [18,0] }) },
+                  { scale: hoverAnims[0] },
+                ],
+                backgroundColor: hoveredIndex === 0 ? '#fbfff9' : undefined,
+              },
+            ]}
             onPress={() => router.push('/configuracoes/perfil')}
+            activeOpacity={0.85}
           >
-            <View style={[styles.optionIconWrap, { backgroundColor: '#fff9e6' }]}>
+            <View style={[styles.optionIconWrap, { backgroundColor: cardPalette[0].iconBg }]}>
               <Image source={require('../../assets/images/mobile.png')} style={styles.optionIcon} />
             </View>
             <View style={styles.optionTextWrap}>
-              <Text style={styles.optionText}>Perfil</Text>
-              <Text style={styles.optionSub}>Editar seu perfil e preferências</Text>
+              <Text style={[styles.optionText, { color: cardPalette[0].titleColor }]}>Perfil</Text>
+              <Text style={[styles.optionSub, { color: cardPalette[0].subColor }]}>Editar seu perfil e preferências</Text>
             </View>
-            <Text style={styles.optionChevron}>›</Text>
-          </TouchableOpacity>
+            <Text style={[styles.optionChevron, { color: cardPalette[0].chevronColor }]}>›</Text>
+          </AnimatedTouchable>
 
-          <TouchableOpacity
-            style={styles.optionButton}
+          <AnimatedTouchable
+            onMouseEnter={() => handleHoverIn(1)}
+            onMouseLeave={() => handleHoverOut(1)}
+            style={[
+              styles.optionButton,
+              {
+                opacity: cardAnims[1],
+                transform: [
+                  { translateY: cardAnims[1].interpolate({ inputRange: [0,1], outputRange: [18,0] }) },
+                  { scale: hoverAnims[1] },
+                ],
+                backgroundColor: hoveredIndex === 1 ? '#f4fffb' : undefined,
+              },
+            ]}
             onPress={() => router.push('/configuracoes/sobrenos')}
+            activeOpacity={0.85}
           >
-            <View style={[styles.optionIconWrap, { backgroundColor: '#e8fff3' }]}>
+            <View style={[styles.optionIconWrap, { backgroundColor: cardPalette[1].iconBg }]}>
               <Image source={require('../../assets/images/bar.png')} style={styles.optionIcon} />
             </View>
             <View style={styles.optionTextWrap}>
-              <Text style={styles.optionText}>Sobre Nós</Text>
-              <Text style={styles.optionSub}>Nossa história e missão</Text>
+              <Text style={[styles.optionText, { color: cardPalette[1].titleColor }]}>Sobre Nós</Text>
+              <Text style={[styles.optionSub, { color: cardPalette[1].subColor }]}>Nossa história e missão</Text>
             </View>
-            <Text style={styles.optionChevron}>›</Text>
-          </TouchableOpacity>
+            <Text style={[styles.optionChevron, { color: cardPalette[1].chevronColor }]}>›</Text>
+          </AnimatedTouchable>
 
-          <TouchableOpacity
-            style={styles.optionButton}
+          <AnimatedTouchable
+            onMouseEnter={() => handleHoverIn(2)}
+            onMouseLeave={() => handleHoverOut(2)}
+            style={[
+              styles.optionButton,
+              {
+                opacity: cardAnims[2],
+                transform: [
+                  { translateY: cardAnims[2].interpolate({ inputRange: [0,1], outputRange: [18,0] }) },
+                  { scale: hoverAnims[2] },
+                ],
+                backgroundColor: hoveredIndex === 2 ? '#f4fbff' : undefined,
+              },
+            ]}
             onPress={() => setFeedbackModalVisible(true)}
+            activeOpacity={0.85}
           >
-            <View style={[styles.optionIconWrap, { backgroundColor: '#e8f7ff' }]}>
+            <View style={[styles.optionIconWrap, { backgroundColor: cardPalette[2].iconBg }]}>
               <Image source={require('../../assets/images/sobre-nos.png')} style={styles.optionIcon} />
             </View>
             <View style={styles.optionTextWrap}>
-              <Text style={styles.optionText}>Feedbacks</Text>
-              <Text style={styles.optionSub}>Envie sugestões ou reporte problemas</Text>
+              <Text style={[styles.optionText, { color: cardPalette[2].titleColor }]}>Feedbacks</Text>
+              <Text style={[styles.optionSub, { color: cardPalette[2].subColor }]}>Envie sugestões ou reporte problemas</Text>
             </View>
-            <Text style={styles.optionChevron}>›</Text>
-          </TouchableOpacity>
+            <Text style={[styles.optionChevron, { color: cardPalette[2].chevronColor }]}>›</Text>
+          </AnimatedTouchable>
         </View>
       </View>
 
@@ -143,6 +237,22 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     marginBottom: 32,
+  },
+  headerDecorWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 8,
+    height: 96,
+    zIndex: 0,
+  },
+  sparkle: {
+    position: 'absolute',
+    width: 8,
+    height: 8,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    opacity: 0.9,
   },
   logo: {
     width: 80,

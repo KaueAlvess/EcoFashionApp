@@ -1,13 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Animated, Image, ImageBackground, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import TrevoTroca from '../../components/TrevoTroca';
 
 export default function SobreNosScreen() {
   const handleDownloadApp = () => {
     Alert.alert('Essa função ainda está em desenvolvimento.', 'Em breve estará disponível!');
   };
 
-  const quantidadeTrevos = 5;
+  
   const logoAnim = useRef(new Animated.Value(0)).current;
   const downloadScale = useRef(new Animated.Value(1)).current;
   const card1Scale = useRef(new Animated.Value(1)).current;
@@ -27,7 +26,6 @@ export default function SobreNosScreen() {
   ];
   return (
     <View style={{ flex: 1 }}>
-      <TrevoTroca quantidade={quantidadeTrevos} />
       <ScrollView contentContainerStyle={styles.container}>
         <ImageBackground source={require('../../assets/images/sobre-nos.png')} style={styles.heroBg} imageStyle={{ opacity: 0.08 }}>
           <Animated.View style={[styles.hero, { opacity: logoAnim, transform: [{ translateY: logoAnim.interpolate({ inputRange: [0,1], outputRange: [8,0] }) }] }]}>
@@ -51,6 +49,7 @@ export default function SobreNosScreen() {
               </Text>
             </View>
           </View>
+          
         </View>
 
         <View style={styles.section}>
@@ -304,5 +303,21 @@ const styles = StyleSheet.create({
     color: '#888',
     textAlign: 'center',
   },
+  chatButton: {
+    alignSelf: 'stretch',
+    backgroundColor: '#2E7D32',
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginTop: 6,
+    marginHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#2E7D32',
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
+  
   
 });
