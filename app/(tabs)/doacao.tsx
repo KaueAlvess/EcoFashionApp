@@ -24,28 +24,8 @@ import Toast from '../../components/Toast';
                       shadowRadius: 6,
                       shadowOffset: { width: 0, height: 2 },
                     },
-                    selectedOption: {
-                      borderColor: '#2E7D32',
-                      backgroundColor: '#c6f7d0',
-                      elevation: 5,
-                      shadowOpacity: 0.18,
-                    },
                     destinoImg: { width: 52, height: 52, borderRadius: 26, marginBottom: 6 },
                     destinoImgWrap: { width: 160, height: 84, borderRadius: 12, justifyContent: 'center', alignItems: 'center', backgroundColor: 'transparent', marginBottom: 6 },
-                    optionBtn: {
-                      backgroundColor: '#e8f8e8',
-                      borderRadius: 14,
-                      paddingVertical: 10,
-                      paddingHorizontal: 18,
-                      margin: 6,
-                      elevation: 2,
-                      borderWidth: 2,
-                      borderColor: '#43ea7a',
-                      shadowColor: '#2E7D32',
-                      shadowOpacity: 0.10,
-                      shadowRadius: 6,
-                      shadowOffset: { width: 0, height: 2 },
-                    },
                     textArea: {
                       backgroundColor: '#fff',
                       borderRadius: 16,
@@ -82,8 +62,36 @@ import Toast from '../../components/Toast';
                       elevation: 2,
                     },
                     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
-                    modalContent: { backgroundColor: '#fff', borderRadius: 16, padding: 24, alignItems: 'center', width: 320, elevation: 4, position: 'relative' },
-                    confirmModalContent: { backgroundColor: '#fff', borderRadius: 16, padding: 24, alignItems: 'center', width: 320, elevation: 4, position: 'relative' },
+                    modalContent: { backgroundColor: '#fff', borderRadius: 16, padding: 18, alignItems: 'center', width: '60%', minWidth: 360, maxWidth: 720, maxHeight: '86%', elevation: 8, position: 'relative', borderWidth: 1, borderColor: '#e6f4ea' },
+                    confirmModalContent: { backgroundColor: '#fff', borderRadius: 16, padding: 18, alignItems: 'center', width: '60%', minWidth: 320, maxWidth: 720, maxHeight: '86%', elevation: 8, position: 'relative', borderWidth: 1, borderColor: '#e6f4ea' },
+                    modalHeader: { width: '100%', alignItems: 'center', marginBottom: 8 },
+                    headerBadge: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#e8fef0', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#bff0c4', marginBottom: 8 },
+                    modalSubtitle: { color: '#2E7D32', fontSize: 13, marginBottom: 6, textAlign: 'center' },
+                    primaryBtn: { backgroundColor: '#2E7D32', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 28, alignItems: 'center', justifyContent: 'center', width: 160, elevation: 6 },
+                    primaryBtnText: { color: '#fff', fontWeight: '800' },
+                    secondaryBtn: { backgroundColor: '#fff', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 28, alignItems: 'center', justifyContent: 'center', width: 160, borderWidth: 2, borderColor: '#2E7D32' },
+                    secondaryBtnText: { color: '#145c2e', fontWeight: '800' },
+                    optionBtn: {
+                      backgroundColor: '#f7fff7',
+                      borderRadius: 14,
+                      paddingVertical: 10,
+                      paddingHorizontal: 18,
+                      margin: 6,
+                      elevation: 2,
+                      borderWidth: 1,
+                      borderColor: '#dff6e8',
+                      shadowColor: '#2E7D32',
+                      shadowOpacity: 0.06,
+                      shadowRadius: 6,
+                      shadowOffset: { width: 0, height: 2 },
+                    },
+                    selectedOption: {
+                      borderColor: '#2E7D32',
+                      backgroundColor: '#c6f7d0',
+                      elevation: 8,
+                      shadowOpacity: 0.22,
+                      transform: [{ translateY: -2 } as any],
+                    },
                     closeModal: { position: 'absolute', top: 8, right: 12, zIndex: 3 },
                     closeModalBtn: { position: 'absolute', top: 8, right: 12, zIndex: 4, width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', elevation: 6, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 3 } },
                     confirmImg: { width: 60, height: 60, borderRadius: 30, marginTop: 5, marginBottom: 5, backgroundColor: 'transparent' },
@@ -382,6 +390,7 @@ import Toast from '../../components/Toast';
                     const [estado, setEstado] = useState('');
                     const [requestedTrevos, setRequestedTrevos] = useState<number>(5);
                     const [tamanho, setTamanho] = useState('');
+                    const [tipo, setTipo] = useState('');
                     const [descricao, setDescricao] = useState('');
                     const [fotoRoupa, setFotoRoupa] = useState<string | null>(null);
                     const [toast, setToast] = useState<{ message: string; type?: 'success' | 'error' } | null>(null);
@@ -639,188 +648,136 @@ import Toast from '../../components/Toast';
                                 <TouchableOpacity style={styles.closeModal} onPress={() => setAddModalVisible(false)}>
                                   <Text style={{ fontSize: 24 }}>&times;</Text>
                                 </TouchableOpacity>
-                                <Text style={styles.modalTitle}>Adicionar Roupa</Text>
-                                <TextInput
-                                  placeholder="Nome da peça"
-                                  value={newNome}
-                                  onChangeText={setNewNome}
-                                  style={[styles.smallInput, { height: 44, marginBottom: 8 }]}
-                                />
-                                {Platform.OS === 'web' ? (
-                                  <>
-                                    <input
-                                      type="file"
-                                      accept="image/*"
-                                      onChange={(e: any) => {
-                                        const file = e.target.files?.[0];
-                                        if (!file) return;
-                                        const reader = new FileReader();
-                                        reader.onload = () => {
-                                          setNewImagem(reader.result as string);
-                                        };
-                                        reader.readAsDataURL(file);
-                                      }}
-                                      style={{ marginBottom: 8 }}
-                                    />
-                                    {newImagem ? (
-                                      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                                      // @ts-ignore
-                                      <img src={newImagem} alt="preview" style={{ width: 120, height: 120, borderRadius: 12, marginBottom: 8, objectFit: 'cover' }} />
-                                    ) : null}
-                                  </>
-                                ) : (
-                                  <>
-                                    <TouchableOpacity style={[styles.optionBtn, { width: '100%', marginBottom: 8 }]} onPress={pickImageForNew}>
-                                      <Text style={{ color: '#145c2e', fontWeight: '700', textAlign: 'center' }}>Escolher imagem</Text>
-                                    </TouchableOpacity>
-                                    {newImagem ? <Image source={{ uri: newImagem }} style={{ width: 120, height: 120, borderRadius: 12, marginBottom: 8 }} /> : null}
-                                  </>
-                                )}
-                                <TextInput
-                                  placeholder="Descrição"
-                                  value={newDescricao}
-                                  onChangeText={setNewDescricao}
-                                  multiline
-                                  numberOfLines={3}
-                                  style={[styles.textArea, { height: 80, marginBottom: 12 }]}
-                                />
-                                {/* Estado da roupa (ruim/ok/bom/muito bom) */}
-                                <View style={{ width: '100%', marginBottom: 10 }}>
-                                  <Text style={{ color: '#145c2e', fontWeight: '700', marginBottom: 8 }}>Estado da roupa</Text>
-                                  <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-                                    {estadoOptions.map(opt => (
-                                      <TouchableOpacity
-                                        key={opt.value}
-                                        onPress={() => setEstado(opt.value)}
-                                        style={[styles.optionBtn, estado === opt.value ? styles.selectedOption : {}, { marginRight: 8, marginBottom: 8 }]}
-                                      >
-                                        <Text style={{ color: estado === opt.value ? '#145c2e' : '#2E7D32', fontWeight: estado === opt.value ? '800' : '600' }}>{opt.label}</Text>
-                                      </TouchableOpacity>
-                                    ))}
+                                <ScrollView style={{ width: '100%' }} contentContainerStyle={{ alignItems: 'center', paddingVertical: 8 }}>
+                                  <View style={styles.modalHeader}>
+                                    <View style={styles.headerBadge}>
+                                      <Image source={require('../../assets/images/trevo.png')} style={{ width: 36, height: 36 }} resizeMode="contain" />
+                                    </View>
+                                    <Text style={[styles.modalTitle, { fontSize: 22 }]}>Adicionar Roupa</Text>
+                                    <Text style={styles.modalSubtitle}>Compartilhe sua peça e ganhe trevos ✨</Text>
                                   </View>
-                                </View>
-                                {/* Trevos solicitados: opção removida — valor padrão utilizado internamente */}
-                                {/* New button: move locally to admin solicitations immediately (works offline) */}
-                                <TouchableOpacity
-                                  style={[styles.optionBtn, { width: 160, backgroundColor: '#fff', borderWidth: 1, borderColor: '#2E7D32', marginBottom: 8 }]}
-                                  onPress={async () => {
-                                    try {
-                                      if (!newNome || !newImagem) {
-                                        setToast({ message: 'Preencha nome e imagem.', type: 'error' });
+                                  <TextInput
+                                    placeholder="Nome da peça"
+                                    value={newNome}
+                                    onChangeText={setNewNome}
+                                    style={[styles.smallInput, { height: 44, marginBottom: 8 }]}
+                                  />
+                                  {Platform.OS === 'web' ? (
+                                    <>
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e: any) => {
+                                          const file = e.target.files?.[0];
+                                          if (!file) return;
+                                          const reader = new FileReader();
+                                          reader.onload = () => {
+                                            setNewImagem(reader.result as string);
+                                          };
+                                          reader.readAsDataURL(file);
+                                        }}
+                                        style={{ marginBottom: 8 }}
+                                      />
+                                      {newImagem ? (
+                                        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                                        // @ts-ignore
+                                        <img src={newImagem} alt="preview" style={{ width: 120, height: 120, borderRadius: 12, marginBottom: 8, objectFit: 'cover' }} />
+                                      ) : null}
+                                    </>
+                                  ) : (
+                                    <>
+                                      <TouchableOpacity style={[styles.optionBtn, { width: '100%', marginBottom: 8 }]} onPress={pickImageForNew}>
+                                        <Text style={{ color: '#145c2e', fontWeight: '700', textAlign: 'center' }}>Escolher imagem</Text>
+                                      </TouchableOpacity>
+                                      {newImagem ? <Image source={{ uri: newImagem }} style={{ width: 120, height: 120, borderRadius: 12, marginBottom: 8 }} /> : null}
+                                    </>
+                                  )}
+                                  <TextInput
+                                    placeholder="Descrição"
+                                    value={newDescricao}
+                                    onChangeText={setNewDescricao}
+                                    multiline
+                                    numberOfLines={3}
+                                    style={[styles.textArea, { height: 80, marginBottom: 12 }]}
+                                  />
+                                  {/* Tipo da peça (camiseta/blusa/short/calça) */}
+                                  <View style={{ width: '100%', marginBottom: 10 }}>
+                                    <Text style={{ color: '#145c2e', fontWeight: '700', marginBottom: 8 }}>Tipo da peça</Text>
+                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                                      {['camiseta','blusa','short','calça'].map(t => (
+                                        <TouchableOpacity key={t} onPress={() => setTipo(t)} style={[styles.optionBtn, tipo === t ? styles.selectedOption : {}, { marginRight: 8, marginBottom: 8 }]}>
+                                          <Text style={{ color: tipo === t ? '#145c2e' : '#2E7D32', fontWeight: tipo === t ? '800' : '600', textTransform: 'capitalize' }}>{t}</Text>
+                                        </TouchableOpacity>
+                                      ))}
+                                    </View>
+                                  </View>
+                                  {/* Tamanhos — adaptam ao tipo selecionado (camiseta/blusa => P/M/G/GG ; calça/short => 36..48) */}
+                                  <View style={{ width: '100%', marginBottom: 10 }}>
+                                    <Text style={{ color: '#145c2e', fontWeight: '700', marginBottom: 8 }}>Tamanho</Text>
+                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                                      {(() => {
+                                        const camisaSizes = ['P','M','G','GG'];
+                                        const calcaSizes = ['36','38','40','42','44','46','48'];
+                                        const opts = (tipo === 'calça' || tipo === 'calca') ? calcaSizes : (tipo === 'short' ? calcaSizes : (tipo === 'camiseta' || tipo === 'blusa' ? camisaSizes : ['P','M','G']));
+                                        return opts.map(s => (
+                                          <TouchableOpacity key={s} onPress={() => setTamanho(s)} style={[styles.optionBtn, tamanho === s ? styles.selectedOption : {}, { marginRight: 8, marginBottom: 8 }]}>
+                                            <Text style={{ color: tamanho === s ? '#145c2e' : '#2E7D32', fontWeight: tamanho === s ? '800' : '600' }}>{s}</Text>
+                                          </TouchableOpacity>
+                                        ));
+                                      })()}
+                                    </View>
+                                  </View>
+                                  {/* Estado da roupa (ruim/ok/bom/muito bom) */}
+                                  <View style={{ width: '100%', marginBottom: 10 }}>
+                                    <Text style={{ color: '#145c2e', fontWeight: '700', marginBottom: 8 }}>Estado da roupa</Text>
+                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                                      {estadoOptions.map(opt => (
+                                        <TouchableOpacity
+                                          key={opt.value}
+                                          onPress={() => setEstado(opt.value)}
+                                          style={[styles.optionBtn, estado === opt.value ? styles.selectedOption : {}, { marginRight: 8, marginBottom: 8 }]}
+                                        >
+                                          <Text style={{ color: estado === opt.value ? '#145c2e' : '#2E7D32', fontWeight: estado === opt.value ? '800' : '600' }}>{opt.label}</Text>
+                                        </TouchableOpacity>
+                                      ))}
+                                    </View>
+                                  </View>
+                                  {/* Trevos solicitados: opção removida — valor padrão utilizado internamente */}
+                                  {/* New button: move locally to admin solicitations immediately (works offline) */}
+                                  <TouchableOpacity
+                                    style={styles.secondaryBtn}
+                                    onPress={async () => {
+                                      try {
+                                        if (!newNome || !newImagem) {
+                                          setToast({ message: 'Preencha nome e imagem.', type: 'error' });
+                                          setTimeout(() => setToast(null), 2000);
+                                          return;
+                                        }
+                                        // add to local solicitations so admin can review even if server is offline
+                                        const raw = (await storage.getItem('solicitacoes_doacao')) || '[]';
+                                        let arr = [] as any[];
+                                        try { arr = JSON.parse(raw || '[]'); } catch (e) { arr = []; }
+                                        const uid = (await storage.getItem('idUsuario')) || '0';
+                                        const solicit = { id: Date.now(), usuario_id: parseInt(uid as string, 10) || 0, nome: newNome, descricao: newDescricao, imagem: newImagem, estado: estado || 'ok', trevosSolicitados: requestedTrevos || 0, tamanho: tamanho || null, tipo: tipo || null, createdAt: new Date().toISOString(), status: 'pendente' };
+                                        arr.unshift(solicit);
+                                        await storage.setItem('solicitacoes_doacao', JSON.stringify(arr));
+                                        setToast({ message: 'Movido para solicitações (Admin).', type: 'success' });
+                                        setTimeout(() => setToast(null), 1400);
+                                        setAddModalVisible(false);
+                                        setNewNome('');
+                                        setNewImagem('');
+                                        setNewDescricao('');
+                                      } catch (e) {
+                                        setToast({ message: 'Erro ao mover para solicitações', type: 'error' });
                                         setTimeout(() => setToast(null), 2000);
-                                        return;
                                       }
-                                      // add to local solicitations so admin can review even if server is offline
-                                      const raw = (await storage.getItem('solicitacoes_doacao')) || '[]';
-                                      let arr = [] as any[];
-                                      try { arr = JSON.parse(raw || '[]'); } catch (e) { arr = []; }
-                                      const uid = (await storage.getItem('idUsuario')) || '0';
-                                      const solicit = { id: Date.now(), usuario_id: parseInt(uid as string, 10) || 0, nome: newNome, descricao: newDescricao, imagem: newImagem, estado: estado || 'ok', trevosSolicitados: requestedTrevos || 0, createdAt: new Date().toISOString(), status: 'pendente' };
-                                      arr.unshift(solicit);
-                                      await storage.setItem('solicitacoes_doacao', JSON.stringify(arr));
-                                      setToast({ message: 'Movido para solicitações (Admin).', type: 'success' });
-                                      setTimeout(() => setToast(null), 1400);
-                                      setAddModalVisible(false);
-                                      setNewNome('');
-                                      setNewImagem('');
-                                      setNewDescricao('');
-                                    } catch (e) {
-                                      setToast({ message: 'Erro ao mover para solicitações', type: 'error' });
-                                      setTimeout(() => setToast(null), 2000);
-                                    }
-                                  }}
-                                >
-                                  <Text style={{ color: '#145c2e', fontWeight: '700', textAlign: 'center' }}>Mover para Solicitações</Text>
-                                </TouchableOpacity>
+                                    }}
+                                  >
+                                    <Text style={styles.secondaryBtnText}>Mover para Solicitações</Text>
+                                  </TouchableOpacity>
 
-                                <TouchableOpacity
-                                  style={[styles.optionBtn, { width: 160 }]}
-                                  onPress={async () => {
-                                    try {
-                                      if (!newNome || !newImagem) {
-                                        setToast({ message: 'Preencha nome e imagem.', type: 'error' });
-                                        setTimeout(() => setToast(null), 2000);
-                                        return;
-                                      }
-                                      if (Platform.OS === 'web' && typeof newImagem === 'string' && newImagem.startsWith('data:')) {
-                                        const payload = { nome: newNome, descricao: newDescricao, imagemBase64: newImagem };
-                                        const resp = await fetch('http://localhost:3001/api/admin-upload', {
-                                          method: 'POST',
-                                          headers: { 'Content-Type': 'application/json' },
-                                          body: JSON.stringify(payload),
-                                        });
-                                        const data = await resp.json();
-                                        if (resp.ok && data.success) {
-                                          setToast({ message: 'Imagem enviada para Administração!', type: 'success' });
-                                          setTimeout(() => setToast(null), 1400);
-                                          setAddModalVisible(false);
-                                          setNewNome('');
-                                          setNewImagem('');
-                                          setNewDescricao('');
-                                          try {
-                                            // also register a local solicitation so admin web panel can review it
-                                            const raw2 = localStorage.getItem('solicitacoes_doacao') || '[]';
-                                            const arr2 = JSON.parse(raw2 || '[]');
-                                            const uid2 = await storage.getItem('idUsuario') || '0';
-                                            const solicit = { id: Date.now(), usuario_id: parseInt(uid2 as string, 10) || 0, nome: newNome, descricao: newDescricao, imagem: newImagem, estado: estado || 'ok', trevosSolicitados: requestedTrevos || 0, createdAt: new Date().toISOString(), status: 'pendente' };
-                                            arr2.unshift(solicit);
-                                            localStorage.setItem('solicitacoes_doacao', JSON.stringify(arr2));
-                                            try { window.dispatchEvent(new StorageEvent('storage', { key: 'solicitacoes_doacao', newValue: JSON.stringify(arr2) } as any)); } catch (e) {}
-                                          } catch (e) {}
-                                        } else {
-                                          setToast({ message: data.error || 'Erro ao enviar imagem', type: 'error' });
-                                          setTimeout(() => setToast(null), 2000);
-                                        }
-                                      } else {
-                                        const idUsuario = await storage.getItem('idUsuario') || '0';
-                                        const formData = new FormData();
-                                        formData.append('usuario_id', idUsuario as any);
-                                        formData.append('descricao', newDescricao || newNome);
-                                        formData.append('destino', 'bazar');
-                                        formData.append('tempo_uso', tempoUso || '0');
-                                        formData.append('estado', estado || 'ok');
-                                        formData.append('trevosSolicitados', String(requestedTrevos || 0));
-                                        formData.append('tamanho', tamanho || 'N/A');
-                                        const uri = newImagem as unknown as string;
-                                        const filename = uri.split('/').pop() || `photo.jpg`;
-                                        const match = filename.match(/\.([a-zA-Z0-9]+)$/);
-                                        const ext = match ? match[1].toLowerCase() : 'jpg';
-                                        const type = ext === 'png' ? 'image/png' : 'image/jpeg';
-                                        formData.append('foto', { uri, name: filename, type } as any);
-                                        const resp = await fetch('http://localhost:3001/api/doacao', {
-                                          method: 'POST',
-                                          body: formData,
-                                        });
-                                        const data = await resp.json();
-                                        if (resp.ok && data.success) {
-                                          setToast({ message: 'Imagem enviada para Administração!', type: 'success' });
-                                          setTimeout(() => setToast(null), 1400);
-                                          setAddModalVisible(false);
-                                          setNewNome('');
-                                          setNewImagem('');
-                                          setNewDescricao('');
-                                            try {
-                                              const raw = localStorage.getItem('solicitacoes_doacao') || '[]';
-                                              const arr = JSON.parse(raw || '[]');
-                                              const uid = await storage.getItem('idUsuario') || '0';
-                                              const solicit = { id: Date.now(), usuario_id: parseInt(uid as string, 10) || 0, nome: newNome, descricao: newDescricao, imagem: newImagem, estado: estado || 'ok', trevosSolicitados: requestedTrevos || 0, createdAt: new Date().toISOString(), status: 'pendente' };
-                                              arr.unshift(solicit);
-                                              localStorage.setItem('solicitacoes_doacao', JSON.stringify(arr));
-                                              try { window.dispatchEvent(new StorageEvent('storage', { key: 'solicitacoes_doacao', newValue: JSON.stringify(arr) } as any)); } catch (e) {}
-                                            } catch (e) {}
-                                        } else {
-                                          setToast({ message: data.error || 'Erro ao enviar imagem', type: 'error' });
-                                          setTimeout(() => setToast(null), 2000);
-                                        }
-                                      }
-                                    } catch (e) {
-                                      setToast({ message: 'Erro ao enviar imagem.', type: 'error' });
-                                      setTimeout(() => setToast(null), 2000);
-                                    }
-                                  }}
-                                >
-                                  <Text style={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}>Enviar para Admin</Text>
-                                </TouchableOpacity>
+                                  {/* Botão "Enviar para Admin" removido — mantemos apenas a opção de mover para solicitações */}
+                                </ScrollView>
                               </View>
                             </View>
                           </Modal>

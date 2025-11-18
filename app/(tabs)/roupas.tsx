@@ -118,6 +118,8 @@ export default function RoupasScreen() {
   });
   const COST_PER_ITEM = 11; // custo padrão por troca (pode ajustar)
   const [selectedCost, setSelectedCost] = React.useState<number | null>(null);
+  const [selectedSize, setSelectedSize] = React.useState<string | null>(null);
+  const [selectedType, setSelectedType] = React.useState<string | null>(null);
 
   const [profileName, setProfileName] = React.useState<string | null>(null);
   const [profileImage, setProfileImage] = React.useState<string | null>(null);
@@ -170,14 +172,17 @@ export default function RoupasScreen() {
   const combined = [...filteredCustom.filter((c:any) => !removed.includes(String(c.nome||'').trim())), ...baseWithOverrides];
   // ensure every product has a custo: keep existing >10 costs, otherwise assign a unique fixed cost >= 11
   const usedCosts = new Set<number>();
-  (combined || []).forEach((p:any) => { if (typeof p.custo === 'number' && Number.isFinite(p.custo) && p.custo > 10) usedCosts.add(p.custo); });
+  // Accept any finite numeric `custo` provided by overrides/custom entries.
+  // Previously the logic ignored custos <= 10 which prevented admin overrides like 5 trevos
+  // from being applied — we must honor any numeric custo.
+  (combined || []).forEach((p:any) => { if (typeof p.custo === 'number' && Number.isFinite(p.custo)) usedCosts.add(p.custo); });
   let nextCost = 11;
   const getNextUnique = () => {
     while (usedCosts.has(nextCost)) nextCost++;
     usedCosts.add(nextCost);
     return nextCost;
   };
-  const withCosts = (combined || []).map((p:any) => ({ ...p, custo: (typeof p.custo === 'number' && Number.isFinite(p.custo) && p.custo > 10) ? p.custo : getNextUnique() }));
+  const withCosts = (combined || []).map((p:any) => ({ ...p, custo: (typeof p.custo === 'number' && Number.isFinite(p.custo)) ? p.custo : getNextUnique() }));
   return withCosts;
     } catch (e) {
       return produtos;
@@ -239,10 +244,11 @@ export default function RoupasScreen() {
           const combined = [...filteredCustom.filter((c:any) => !removed.includes(String(c.nome||'').trim())), ...baseWithOverrides];
           // ensure every product has a custo: keep existing >10 costs, otherwise assign a unique fixed cost >= 11
           const usedCosts2 = new Set<number>();
-          (combined || []).forEach((p:any) => { if (typeof p.custo === 'number' && Number.isFinite(p.custo) && p.custo > 10) usedCosts2.add(p.custo); });
+          // Same logic as during initialization: honor any finite numeric custo from overrides/custom
+          (combined || []).forEach((p:any) => { if (typeof p.custo === 'number' && Number.isFinite(p.custo)) usedCosts2.add(p.custo); });
           let nextCost2 = 11;
           const getNextUnique2 = () => { while (usedCosts2.has(nextCost2)) nextCost2++; usedCosts2.add(nextCost2); return nextCost2; };
-          const withCosts2 = (combined || []).map((p:any) => ({ ...p, custo: (typeof p.custo === 'number' && Number.isFinite(p.custo) && p.custo > 10) ? p.custo : getNextUnique2() }));
+          const withCosts2 = (combined || []).map((p:any) => ({ ...p, custo: (typeof p.custo === 'number' && Number.isFinite(p.custo)) ? p.custo : getNextUnique2() }));
           setListaProdutos(withCosts2);
         } catch (e) {
           setListaProdutos(produtos);
@@ -460,29 +466,43 @@ export default function RoupasScreen() {
   const gap = 16; // espaço entre cards
   const cardWidth = Math.max(120, Math.floor((windowWidth - horizontalPadding - gap * (columns - 1)) / columns));
 
-  const handleTroca = (produto: { nome: string; descricao: string; imagem: string }) => {
+  // Start troca flow. First show size selection, then create solicitacao including tamanho.
+  const handleTroca = (produto: { nome: string; descricao: string; imagem: string, custo?: number }) => {
     setProdutoSelecionado(produto);
-    // iniciar fluxo de verificação
-    // usar saldo local (localStorage) sem chamar backend
+    setSelectedSize(null);
+    setSelectedType(null);
+    // load current trevos for user
     try {
       const t = localStorage.getItem('trevos');
       setUserTrevos(t ? parseInt(t, 10) : 0);
     } catch (e) {
       setUserTrevos(0);
     }
-    // definir custo do item (se o produto tiver propriedade 'custo' use-a)
+    // set price preview
     const custo = (produto as any).custo ?? COST_PER_ITEM;
     setSelectedCost(custo);
-    // create a solicitação entry with status 'em_andamento' so user sees it immediately
+    // open modal showing size picker first
+    setFlowStage('select_size');
+    setModalVisible(true);
+  };
+
+  const confirmSizeSelection = (size: string | null) => {
+    if (!produtoSelecionado) return;
+    // persist selected size on the solicitation
+    setSelectedSize(size);
     try {
       const rawUserId = localStorage.getItem('idUsuario') || '0';
       const usuario_id = rawUserId ? parseInt(rawUserId, 10) : 0;
       const now = Date.now();
+      // determine tipo: prefer explicit selection, otherwise try name heuristics
+      const name = String(produtoSelecionado.nome || '').toLowerCase();
+      const inferredTipo = /calça|calca|jeans|pant|pants|calças/.test(name) ? 'calça' : (/camiseta|camisa|blusa|t-shirt|tshirt|vestido/.test(name) ? 'camiseta' : null);
+      const tipoFinal = selectedType || inferredTipo || null;
       const solicit = {
         id: now,
         usuario_id,
-        produto: { nome: produto.nome, descricao: produto.descricao, imagem: produto.imagem },
-        custo,
+        produto: { nome: produtoSelecionado.nome, descricao: produtoSelecionado.descricao, imagem: produtoSelecionado.imagem, tamanho: size, tipo: tipoFinal },
+        custo: selectedCost ?? COST_PER_ITEM,
         endereco: null,
         createdAt: new Date(now).toISOString(),
         status: 'em_andamento'
@@ -496,8 +516,8 @@ export default function RoupasScreen() {
     } catch (e) {
       // ignore storage errors
     }
+    // continue to check stage
     setFlowStage('check');
-    setModalVisible(true);
   };
 
   const fecharModal = () => {
@@ -720,6 +740,40 @@ export default function RoupasScreen() {
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Troca</Text>
 
+            {flowStage === 'select_size' && (
+              <>
+                <Text style={{ marginBottom: 8, fontWeight: '800' }}>Selecione o tipo e o tamanho</Text>
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+                  {['camiseta', 'blusa', 'short', 'calça'].map(t => (
+                    <TouchableOpacity key={t} onPress={() => setSelectedType(t)} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, backgroundColor: selectedType === t ? '#c6f7d0' : '#f3f3f3', margin: 4 }}>
+                      <Text style={{ color: '#145c2e', fontWeight: '700', textTransform: 'capitalize' }}>{t}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 12 }}>
+                  {(() => {
+                    const name = String(produtoSelecionado?.nome || '').toLowerCase();
+                    const camisaSizes = ['P','M','G','GG'];
+                    const calcaSizes = ['36','38','40','42','44','46','48'];
+                    const generic = ['P','M','G'];
+                    // If user selected a type, use it; otherwise try name heuristics
+                    const tipo = selectedType || (/calça|calca|jeans|pant|pants|calças/.test(name) ? 'calça' : (/camiseta|camisa|blusa|t-shirt|tshirt|vestido/.test(name) ? 'camiseta' : null));
+                    const opts = tipo === 'calça' ? calcaSizes : (tipo === 'camiseta' || tipo === 'blusa' ? camisaSizes : generic);
+                    return opts.map(s => (
+                      <TouchableOpacity key={s} onPress={() => confirmSizeSelection(s)} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: selectedSize === s ? '#c6f7d0' : '#f3f3f3', margin: 4 }}>
+                        <Text style={{ color: '#145c2e', fontWeight: '700' }}>{s}</Text>
+                      </TouchableOpacity>
+                    ));
+                  })()}
+                </View>
+
+                <TouchableOpacity style={[styles.confirmBtn, { backgroundColor: '#aaa' }]} onPress={() => { setModalVisible(false); setProdutoSelecionado(null); setFlowStage(null); }}>
+                  <Text style={styles.confirmBtnText}>Cancelar</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
             {flowStage === 'check' && (
               <>
                 {produtoSelecionado && (
@@ -801,6 +855,8 @@ export default function RoupasScreen() {
                 <View key={s.id} style={{ padding: 10, backgroundColor: '#f8fff8', borderRadius: 10, marginBottom: 8 }}>
                   <Text style={{ fontWeight: '800' }}>{s.produto?.nome}</Text>
                   <Text style={{ color: '#666' }}>{s.produto?.descricao}</Text>
+                  {s.produto?.tipo ? <Text style={{ color: '#666', marginTop: 4 }}>Tipo: {s.produto?.tipo}</Text> : null}
+                  {s.produto?.tamanho ? <Text style={{ color: '#666', marginTop: 4 }}>Tamanho: {s.produto?.tamanho}</Text> : null}
                   <Text style={{ marginTop: 6 }}>Status: <Text style={{ fontWeight: '800' }}>{s.status}</Text></Text>
                   <Text style={{ color: '#666', fontSize: 12 }}>Criado: {s.createdAt ? new Date(s.createdAt).toLocaleString() : ''}</Text>
                   {s.status === 'aprovado' ? (

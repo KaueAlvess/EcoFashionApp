@@ -555,7 +555,7 @@ export default function AdministracaoScreen() {
         try {
           const customRaw = localStorage.getItem('produtos_custom') || '[]';
           const custom = JSON.parse(customRaw || '[]') || [];
-          const newProd = { nome: original.nome, descricao: original.descricao || '', imagem: original.imagem || '', addedAt: new Date().toISOString(), recent: true };
+          const newProd = { nome: original.nome, descricao: original.descricao || '', imagem: original.imagem || '', tamanho: original.tamanho || original.produto?.tamanho || null, tipo: original.tipo || original.produto?.tipo || null, addedAt: new Date().toISOString(), recent: true };
           custom.unshift(newProd);
           localStorage.setItem('produtos_custom', JSON.stringify(custom));
           try { window.dispatchEvent(new StorageEvent('storage', { key: 'produtos_custom', newValue: JSON.stringify(custom) } as any)); } catch (e) {}
@@ -567,7 +567,7 @@ export default function AdministracaoScreen() {
             const userArr = JSON.parse(rawUser || '[]') || [];
             // include trevos awarded information if present
             const trevosAwarded = original.trevosSolicitados || 0;
-            userArr.unshift({ id: Date.now(), originalSolicitId: original.id, usuario_id: original.usuario_id || 0, nome: original.nome, status: 'aprovado', adminMessage: 'Sua doação foi aprovada e adicionada ao catálogo.', trevosRecebidos: trevosAwarded, createdAt: new Date().toISOString(), produto: newProd });
+            userArr.unshift({ id: Date.now(), originalSolicitId: original.id, usuario_id: original.usuario_id || 0, nome: original.nome, status: 'aprovado', adminMessage: 'Sua doação foi aprovada e adicionada ao catálogo.', trevosRecebidos: trevosAwarded, createdAt: new Date().toISOString(), produto: newProd, tamanho: original.tamanho || null, tipo: original.tipo || null });
             localStorage.setItem(userKey, JSON.stringify(userArr));
             try { window.dispatchEvent(new StorageEvent('storage', { key: userKey, newValue: JSON.stringify(userArr) } as any)); } catch (e) {}
             // If the approved donation belongs to a user currently using this browser, credit their trevos balance immediately
@@ -629,7 +629,7 @@ export default function AdministracaoScreen() {
           const customArr = Array.isArray(JSON.parse(customRaw || '[]')) ? JSON.parse(customRaw || '[]') : [];
           const exists = (customArr || []).some((c:any) => String(c.nome || '') === String(original.nome || ''));
           if (!exists) {
-            const newProd = { nome: original.nome, descricao: original.descricao || '', imagem: original.imagem || '', addedAt: new Date().toISOString(), recent: false };
+            const newProd = { nome: original.nome, descricao: original.descricao || '', imagem: original.imagem || '', tamanho: original.tamanho || original.produto?.tamanho || null, tipo: original.tipo || original.produto?.tipo || null, addedAt: new Date().toISOString(), recent: false };
             customArr.unshift(newProd);
             localStorage.setItem('produtos_custom', JSON.stringify(customArr));
             try { window.dispatchEvent(new StorageEvent('storage', { key: 'produtos_custom', newValue: JSON.stringify(customArr) } as any)); } catch (e) {}
@@ -648,7 +648,7 @@ export default function AdministracaoScreen() {
             const userKey = 'solicitacoes_doacao_usuario';
             const rawUser = localStorage.getItem(userKey) || '[]';
             const userArr = JSON.parse(rawUser || '[]') || [];
-            userArr.unshift({ id: Date.now(), originalSolicitId: original.id, usuario_id: original.usuario_id || 0, nome: original.nome, status: 'reprovado', adminMessage: reason || 'Doação reprovada pelo administrador.', createdAt: new Date().toISOString() });
+            userArr.unshift({ id: Date.now(), originalSolicitId: original.id, usuario_id: original.usuario_id || 0, nome: original.nome, status: 'reprovado', adminMessage: reason || 'Doação reprovada pelo administrador.', createdAt: new Date().toISOString(), produto: { nome: original.nome, descricao: original.descricao || '', imagem: original.imagem || '' }, tamanho: original.tamanho || original.produto?.tamanho || null, tipo: original.tipo || original.produto?.tipo || null });
             localStorage.setItem(userKey, JSON.stringify(userArr));
             try { window.dispatchEvent(new StorageEvent('storage', { key: userKey, newValue: JSON.stringify(userArr) } as any)); } catch (e) {}
           } catch (e) {}
@@ -704,7 +704,7 @@ export default function AdministracaoScreen() {
           const customArr = Array.isArray(JSON.parse(customRaw || '[]')) ? JSON.parse(customRaw || '[]') : [];
           const exists = (customArr || []).some((c:any) => String(c.nome || '') === String(prod.nome || ''));
           if (!exists) {
-            const newProd = { nome: prod.nome || '', descricao: prod.descricao || '', imagem: prod.imagem || '', addedAt: new Date().toISOString(), recent: false };
+            const newProd = { nome: prod.nome || '', descricao: prod.descricao || '', imagem: prod.imagem || '', tamanho: prod.tamanho || null, tipo: prod.tipo || null, addedAt: new Date().toISOString(), recent: false };
             customArr.unshift(newProd);
             localStorage.setItem('produtos_custom', JSON.stringify(customArr));
             try { window.dispatchEvent(new StorageEvent('storage', { key: 'produtos_custom', newValue: JSON.stringify(customArr) } as any)); } catch (e) {}
@@ -771,7 +771,7 @@ export default function AdministracaoScreen() {
       try {
         const customRaw = localStorage.getItem('produtos_custom') || '[]';
         const custom = JSON.parse(customRaw || '[]') || [];
-        const newProd = { nome: original.nome, descricao: original.descricao || '', imagem: original.imagem || '', addedAt: new Date().toISOString(), recent: true };
+  const newProd = { nome: original.nome, descricao: original.descricao || '', imagem: original.imagem || '', tamanho: original.tamanho || original.produto?.tamanho || null, tipo: original.tipo || original.produto?.tipo || null, addedAt: new Date().toISOString(), recent: true };
         custom.unshift(newProd);
         localStorage.setItem('produtos_custom', JSON.stringify(custom));
         try { window.dispatchEvent(new StorageEvent('storage', { key: 'produtos_custom', newValue: JSON.stringify(custom) } as any)); } catch (e) {}
@@ -781,7 +781,7 @@ export default function AdministracaoScreen() {
           const userKey = 'solicitacoes_doacao_usuario';
           const rawUser = localStorage.getItem(userKey) || '[]';
           const userArr = JSON.parse(rawUser || '[]') || [];
-          userArr.unshift({ id: Date.now(), originalSolicitId: original.id, usuario_id: original.usuario_id || 0, nome: original.nome, status: 'aprovado', adminMessage: 'Sua doação foi aprovada e adicionada ao catálogo.', trevosRecebidos: trevosAwarded, createdAt: new Date().toISOString(), produto: newProd });
+          userArr.unshift({ id: Date.now(), originalSolicitId: original.id, usuario_id: original.usuario_id || 0, nome: original.nome, status: 'aprovado', adminMessage: 'Sua doação foi aprovada e adicionada ao catálogo.', trevosRecebidos: trevosAwarded, createdAt: new Date().toISOString(), produto: newProd, tamanho: original.tamanho || null, tipo: original.tipo || null });
           localStorage.setItem(userKey, JSON.stringify(userArr));
           try { window.dispatchEvent(new StorageEvent('storage', { key: userKey, newValue: JSON.stringify(userArr) } as any)); } catch (e) {}
 
@@ -935,6 +935,8 @@ export default function AdministracaoScreen() {
                 ) : null}
                 <Text style={styles.doacaoTitle}>{s.nome || s.descricao || 'Sem título'}</Text>
                 <Text style={styles.doacaoMeta}>Criado: {s.createdAt ? new Date(s.createdAt).toLocaleString() : ''}</Text>
+                    { (s.tipo || s.produto?.tipo) ? <Text style={styles.doacaoMeta}>Tipo: {s.tipo || s.produto?.tipo}</Text> : null }
+                    { (s.tamanho || s.produto?.tamanho) ? <Text style={styles.doacaoMeta}>Tamanho: {s.tamanho || s.produto?.tamanho}</Text> : null }
                 <Text style={styles.doacaoMeta}>Status: {s.status || 'pendente'}</Text>
                 {s.trevosSolicitados ? <Text style={styles.doacaoMeta}>Trevos solicitados: {s.trevosSolicitados}</Text> : null}
                 {s.adminMessage ? <Text style={[styles.doacaoMeta, { marginTop: 6, color: '#444' }]}>Resposta ao usuário: {s.adminMessage}</Text> : null}
@@ -1231,6 +1233,8 @@ export default function AdministracaoScreen() {
                         ) : null}
                         <Text style={styles.doacaoTitle}>{t.produto?.nome || 'Produto'}</Text>
                         <Text style={styles.doacaoMeta}>Custo: {t.custo} trevos</Text>
+                { (t.tipo || t.produto?.tipo) ? <Text style={styles.doacaoMeta}>Tipo: {t.tipo || t.produto?.tipo}</Text> : null }
+                { (t.tamanho || t.produto?.tamanho) ? <Text style={styles.doacaoMeta}>Tamanho: {t.tamanho || t.produto?.tamanho}</Text> : null }
                         <Text style={styles.doacaoMeta}>Endereço: {t.endereco?.rua || ''} {t.endereco?.numero || ''} — {t.endereco?.cidade || ''} {t.endereco?.cep || ''}</Text>
                         <Text style={styles.doacaoMeta}>Criado: {new Date(t.createdAt).toLocaleString()}</Text>
                         <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
