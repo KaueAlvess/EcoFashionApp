@@ -567,7 +567,7 @@ export default function AdministracaoScreen() {
             const userArr = JSON.parse(rawUser || '[]') || [];
             // include trevos awarded information if present
             const trevosAwarded = original.trevosSolicitados || 0;
-            userArr.unshift({ id: Date.now(), originalSolicitId: original.id, usuario_id: original.usuario_id || 0, nome: original.nome, status: 'aprovado', adminMessage: 'Sua doação foi aprovada e adicionada ao catálogo.', trevosRecebidos: trevosAwarded, createdAt: new Date().toISOString(), produto: newProd, tamanho: original.tamanho || null, tipo: original.tipo || null });
+            userArr.unshift({ id: Date.now(), originalSolicitId: original.id, usuario_id: original.usuario_id || 0, nome: original.nome, status: 'aprovado', adminMessage: 'Sua doação foi aprovada. Por favor, leve a peça aos Correios mais próximo da sua residência após a aprovação.', trevosRecebidos: trevosAwarded, createdAt: new Date().toISOString(), produto: newProd, tamanho: original.tamanho || null, tipo: original.tipo || null });
             localStorage.setItem(userKey, JSON.stringify(userArr));
             try { window.dispatchEvent(new StorageEvent('storage', { key: userKey, newValue: JSON.stringify(userArr) } as any)); } catch (e) {}
             // If the approved donation belongs to a user currently using this browser, credit their trevos balance immediately
@@ -648,7 +648,7 @@ export default function AdministracaoScreen() {
             const userKey = 'solicitacoes_doacao_usuario';
             const rawUser = localStorage.getItem(userKey) || '[]';
             const userArr = JSON.parse(rawUser || '[]') || [];
-            userArr.unshift({ id: Date.now(), originalSolicitId: original.id, usuario_id: original.usuario_id || 0, nome: original.nome, status: 'reprovado', adminMessage: reason || 'Doação reprovada pelo administrador.', createdAt: new Date().toISOString(), produto: { nome: original.nome, descricao: original.descricao || '', imagem: original.imagem || '' }, tamanho: original.tamanho || original.produto?.tamanho || null, tipo: original.tipo || original.produto?.tipo || null });
+            userArr.unshift({ id: Date.now(), originalSolicitId: original.id, usuario_id: original.usuario_id || 0, nome: original.nome, status: 'reprovado', adminMessage: 'A administração concluiu que o item não está de forma correta, seja imagem, descrição, nome ou algum erro. Use o Solucione para entender', createdAt: new Date().toISOString(), produto: { nome: original.nome, descricao: original.descricao || '', imagem: original.imagem || '' }, tamanho: original.tamanho || original.produto?.tamanho || null, tipo: original.tipo || original.produto?.tipo || null });
             localStorage.setItem(userKey, JSON.stringify(userArr));
             try { window.dispatchEvent(new StorageEvent('storage', { key: userKey, newValue: JSON.stringify(userArr) } as any)); } catch (e) {}
           } catch (e) {}

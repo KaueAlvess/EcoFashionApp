@@ -382,6 +382,7 @@ import Toast from '../../components/Toast';
                     const [linkModalUrl, setLinkModalUrl] = useState('');
                     const [activeTopTab, setActiveTopTab] = useState('roupas');
                     const [addModalVisible, setAddModalVisible] = useState(false);
+                    const [deliveryModalVisible, setDeliveryModalVisible] = useState(false);
                     const [newNome, setNewNome] = useState('');
                     const [newImagem, setNewImagem] = useState('');
                     const [newDescricao, setNewDescricao] = useState('');
@@ -399,6 +400,8 @@ import Toast from '../../components/Toast';
                     const selectedDestino = destinos.find(d => d.key === destino);
                     const [quantidadeTrevos, setQuantidadeTrevos] = React.useState(0);
                     const trevoPulse = React.useRef(new Animated.Value(1)).current;
+                    const [notificationsModalVisible, setNotificationsModalVisible] = useState(false);
+                    const [notifications, setNotifications] = useState<any[]>([]);
 
                     const openLinkInModal = (url: string) => {
                       setLinkModalUrl(url);
@@ -450,6 +453,41 @@ import Toast from '../../components/Toast';
                       return () => {
                         mounted = false;
                         try { storage.removeChangeListener && storage.removeChangeListener(handle); } catch (e) {}
+                      };
+                    }, []);
+
+                    // Load per-user notifications from `solicitacoes_doacao_usuario` (approved/rejected)
+                    React.useEffect(() => {
+                      let mounted = true;
+                      (async () => {
+                        try {
+                          const userId = await storage.getItem('idUsuario');
+                          const raw = await storage.getItem('solicitacoes_doacao_usuario');
+                          const arr = raw ? JSON.parse(raw) : [];
+                          const nots = (arr || []).filter((s: any) => s.status && s.status !== 'pendente' && String(s.usuario_id) === String(userId));
+                          if (mounted) setNotifications(nots);
+                        } catch (e) {
+                          // ignore
+                        }
+                      })();
+
+                      const handleNotifs = (key: string, newValue: string | null) => {
+                        if (key !== 'solicitacoes_doacao_usuario') return;
+                        (async () => {
+                          try {
+                            const userId = await storage.getItem('idUsuario');
+                            const arr = newValue ? JSON.parse(newValue) : [];
+                            const nots = (arr || []).filter((s: any) => s.status && s.status !== 'pendente' && String(s.usuario_id) === String(userId));
+                            setNotifications(nots);
+                          } catch (e) {}
+                        })();
+                      };
+
+                      try { storage.addChangeListener && storage.addChangeListener(handleNotifs); } catch (e) {}
+
+                      return () => {
+                        mounted = false;
+                        try { storage.removeChangeListener && storage.removeChangeListener(handleNotifs); } catch (e) {}
                       };
                     }, []);
 
@@ -530,6 +568,21 @@ import Toast from '../../components/Toast';
                             </View>
                             <Text style={{ fontSize: 36, fontWeight: 'bold', color: '#fff', marginLeft: 6, textShadowColor: '#2E7D32', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 2 }}>{quantidadeTrevos}</Text>
                           </TouchableOpacity>
+                        {/* Notification button (top-right) */}
+                        <TouchableOpacity
+                          onPress={() => setNotificationsModalVisible(true)}
+                          style={{ position: 'absolute', right: 12, top: Platform.OS === 'web' ? 12 : 8, zIndex: 999 }}
+                          accessibilityLabel="Notificações"
+                        >
+                          <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', elevation: 6, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 3 } }}>
+                            <Text style={{ fontSize: 20 }}>🔔</Text>
+                            {notifications.length > 0 ? (
+                              <View style={{ position: 'absolute', right: -4, top: -4, backgroundColor: '#ff3b30', minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center' }}>
+                                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800' }}>{notifications.length}</Text>
+                              </View>
+                            ) : null}
+                          </View>
+                        </TouchableOpacity>
                         </View>
 
                         <View style={{ height: 18 }} />
@@ -777,12 +830,105 @@ import Toast from '../../components/Toast';
                                   </TouchableOpacity>
 
                                   {/* Botão "Enviar para Admin" removido — mantemos apenas a opção de mover para solicitações */}
+                                  {/* Botão: Informações de entrega (abre modal em formato documento) */}
+                                  <TouchableOpacity
+                                    style={[styles.optionBtn, { width: '100%', marginTop: 10, backgroundColor: '#fff', borderWidth: 1, borderColor: '#e6f4ea' }]}
+                                    onPress={() => setDeliveryModalVisible(true)}
+                                  >
+                                    <Text style={{ color: '#145c2e', fontWeight: '800', textAlign: 'center' }}>Informações de entrega</Text>
+                                  </TouchableOpacity>
                                 </ScrollView>
                               </View>
                             </View>
                           </Modal>
 
                           {/* Modal para abrir links externos dentro do app (iframe/webview) */}
+                          <Modal visible={deliveryModalVisible} transparent animationType="fade">
+                            <View style={styles.modalOverlay}>
+                              <View style={[styles.modalContent, { width: Platform.OS === 'web' ? '70%' : '92%', maxWidth: 880 }]}>
+                                <TouchableOpacity style={styles.closeModalBtn} onPress={() => setDeliveryModalVisible(false)} accessibilityLabel="Fechar">
+                                  <Text style={{ fontSize: 20, fontWeight: '900' }}>✕</Text>
+                                </TouchableOpacity>
+                                <ScrollView contentContainerStyle={{ padding: 18 }}>
+                                  <View style={{ alignItems: 'center', marginBottom: 8 }}>
+                                    <Text style={[styles.modalTitle, { fontSize: 20 }]}>Informações de entrega</Text>
+                                    <Text style={styles.modalSubtitle}>Como proceder após a aprovação da sua doação</Text>
+                                  </View>
+                                  <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#e6f4ea' }}>
+                                    <Text style={{ color: '#145c2e', fontWeight: '700', marginBottom: 8 }}>Instruções</Text>
+                                    <Text style={{ marginBottom: 8, color: '#385b3b' }}>1) Aguarde a aprovação da doação.</Text>
+                                    <Text style={{ marginBottom: 8, color: '#385b3b' }}>2) Embale a peça: coloque em saco/plástico limpo ou caixa resistente.</Text>
+                                    <Text style={{ marginBottom: 8, color: '#385b3b' }}>3) Vá até a agência dos Correios mais próxima e envie como PAC ou encomenda comum.</Text>
+                                    <Text style={{ marginBottom: 8, color: '#385b3b' }}>4) Coloque na etiqueta: “Doação — [seu nome]” e, se houver, o número da solicitação.</Text>
+                                    <Text style={{ marginBottom: 8, color: '#385b3b' }}>5) Guarde o comprovante de postagem e o código de rastreio (se houver).</Text>
+                                    <Text style={{ marginBottom: 8, color: '#385b3b' }}>6) Em caso de dúvida, contacte o administrador pelo painel.</Text>
+                                  </View>
+                                  <View style={{ height: 14 }} />
+                                  <Text style={{ color: '#145c2e', fontWeight: '700', marginBottom: 8 }}>Dicas</Text>
+                                  <Text style={{ marginBottom: 6, color: '#385b3b' }}>• Use embalagem limpa e sem odores.</Text>
+                                  <Text style={{ marginBottom: 6, color: '#385b3b' }}>• Identifique internamente a peça com tamanho/nome.</Text>
+                                  <Text style={{ marginBottom: 12, color: '#385b3b' }}>• Prefira envio com rastreio para acompanhar a entrega.</Text>
+                                  <TouchableOpacity style={[styles.primaryBtn, { alignSelf: 'center', marginTop: 6 }]} onPress={() => setDeliveryModalVisible(false)}>
+                                    <Text style={styles.primaryBtnText}>Fechar</Text>
+                                  </TouchableOpacity>
+                                </ScrollView>
+                              </View>
+                            </View>
+                          </Modal>
+
+                          <Modal visible={notificationsModalVisible} transparent animationType="slide">
+                            <View style={styles.modalOverlay}>
+                              <View style={[styles.confirmModalContent, { width: Platform.OS === 'web' ? '60%' : '92%', maxWidth: 720 }]}>
+                                <TouchableOpacity style={styles.closeModalBtn} onPress={() => setNotificationsModalVisible(false)} accessibilityLabel="Fechar">
+                                  <Text style={{ fontSize: 20, fontWeight: '900' }}>✕</Text>
+                                </TouchableOpacity>
+                                <Text style={[styles.modalTitle, { marginTop: 6 }]}>Notificações de Doação</Text>
+                                <Text style={[styles.modalSubtitle, { marginBottom: 12 }]}>Aqui você vê se suas doações foram aprovadas ou reprovadas.</Text>
+                                <ScrollView style={{ width: '100%', maxHeight: 380 }} contentContainerStyle={{ paddingBottom: 12 }}>
+                                  {notifications.length === 0 ? (
+                                    <View style={{ alignItems: 'center', padding: 28 }}>
+                                      <Text style={{ color: '#385b3b' }}>Sem notificações no momento.</Text>
+                                    </View>
+                                  ) : (
+                                    notifications.map((n: any) => (
+                                      <View key={n.id || String(Math.random())} style={{ backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: '#e6f4ea' }}>
+                                        <Text style={{ fontWeight: '800', color: '#145c2e', marginBottom: 6 }}>{n.nome || 'Doação'}</Text>
+                                        <Text style={{ color: '#385b3b', marginBottom: 6 }}>{n.adminMessage || n.descricao || ''}</Text>
+                                        <Text style={{ fontWeight: '700', color: n.status === 'aprovado' ? '#2e7d32' : '#b00020' }}>{n.status === 'aprovado' ? 'Aprovada' : 'Reprovada'}</Text>
+                                      </View>
+                                    ))
+                                  )}
+                                </ScrollView>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: 8 }}>
+                                  <TouchableOpacity style={styles.secondaryBtn} onPress={() => setNotificationsModalVisible(false)}>
+                                    <Text style={styles.secondaryBtnText}>Fechar</Text>
+                                  </TouchableOpacity>
+                                  <TouchableOpacity
+                                    style={styles.primaryBtn}
+                                    onPress={async () => {
+                                      try {
+                                        const userId = await storage.getItem('idUsuario');
+                                        const raw = (await storage.getItem('solicitacoes_doacao_usuario')) || '[]';
+                                        let arr = [] as any[];
+                                        try { arr = JSON.parse(raw); } catch (e) { arr = []; }
+                                        // remove final (aprovado/reprovado) notifications only for current user
+                                        arr = (arr || []).filter(s => String(s.usuario_id) !== String(userId) || !s.status || s.status === 'pendente');
+                                        await storage.setItem('solicitacoes_doacao_usuario', JSON.stringify(arr));
+                                        setNotifications([]);
+                                        setNotificationsModalVisible(false);
+                                      } catch (e) {
+                                        // ignore
+                                        setNotificationsModalVisible(false);
+                                      }
+                                    }}
+                                  >
+                                    <Text style={styles.primaryBtnText}>Limpar notificações</Text>
+                                  </TouchableOpacity>
+                                </View>
+                              </View>
+                            </View>
+                          </Modal>
+
                           <Modal visible={linkModalVisible} transparent animationType="slide">
                             <View style={styles.modalOverlay}>
                               <View style={[styles.modalContent, { width: '92%', maxWidth: 1000, height: '80%', padding: 0, overflow: 'hidden' }]}>
